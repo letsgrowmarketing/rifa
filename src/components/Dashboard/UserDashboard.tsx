@@ -83,7 +83,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
         <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
             <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
@@ -116,18 +116,6 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
             <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
               <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">{stats.pendentes}</p>
               <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm lg:text-base truncate">Pendentes</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
-              <TrendingUp className="w-4 h-4 sm:w-5 h-5 lg:w-6 lg:h-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-              <p className="text-sm sm:text-lg lg:text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.valorTotal)}</p>
-              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm lg:text-base truncate">Total Investido</p>
             </div>
           </div>
         </div>
