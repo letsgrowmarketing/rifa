@@ -81,14 +81,14 @@ const VoucherManagement: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gerenciar Comprovantes</h1>
-        <p className="text-gray-600 dark:text-gray-300 mt-1">Aprove ou rejeite comprovantes de pagamento</p>
+    <div className="w-full max-w-none mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 overflow-x-hidden">
+      <div className="mb-6 lg:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Gerenciar Comprovantes</h1>
+        <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm sm:text-base">Aprove ou rejeite comprovantes de pagamento</p>
       </div>
 
-      <div className="mb-6">
-        <div className="flex space-x-2">
+      <div className="mb-6 overflow-x-auto">
+        <div className="flex space-x-2 min-w-max">
           {[
             { key: 'pendente', label: 'Pendentes', count: comprovantes.filter(c => c.status === 'pendente').length },
             { key: 'aprovado', label: 'Aprovados', count: comprovantes.filter(c => c.status === 'aprovado').length },
@@ -98,7 +98,7 @@ const VoucherManagement: React.FC = () => {
             <button
               key={key}
               onClick={() => setFilter(key as any)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 filter === key
                   ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -112,7 +112,7 @@ const VoucherManagement: React.FC = () => {
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         {filteredComprovantes.length === 0 ? (
-          <div className="p-8 text-center">
+          <div className="p-6 sm:p-8 text-center">
             <Eye className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Nenhum comprovante encontrado</h3>
             <p className="text-gray-600 dark:text-gray-300">
@@ -127,19 +127,19 @@ const VoucherManagement: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Usuário
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Valor
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Data
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
@@ -147,33 +147,33 @@ const VoucherManagement: React.FC = () => {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredComprovantes.map((comprovante) => (
                   <tr key={comprovante.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="p-2 bg-gray-100 dark:bg-gray-600 rounded-full mr-3">
-                          <User className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                        <div className="p-2 bg-gray-100 dark:bg-gray-600 rounded-full mr-2 sm:mr-3 flex-shrink-0">
+                          <User className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 dark:text-gray-300" />
                         </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        <div className="min-w-0">
+                          <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate max-w-24 sm:max-w-none">
                             {comprovante.usuario_nome}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <DollarSign className="w-4 h-4 text-gray-400 dark:text-gray-500 mr-1" />
-                        <span className="text-sm text-gray-900 dark:text-white">
+                        <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 dark:text-gray-500 mr-1 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm text-gray-900 dark:text-white">
                           {formatCurrency(comprovante.valor_informado)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                        <Calendar className="w-4 h-4 mr-1" />
+                    <td className="hidden sm:table-cell px-3 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
                         {formatDate(comprovante.data_envio)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         comprovante.status === 'aprovado' 
                           ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
@@ -185,31 +185,36 @@ const VoucherManagement: React.FC = () => {
                          comprovante.status === 'rejeitado' ? 'Rejeitado' : 'Pendente'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => setSelectedVoucher(comprovante)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      {comprovante.status === 'pendente' && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(comprovante)}
-                            disabled={loading === comprovante.id}
-                            className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 disabled:opacity-50"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleReject(comprovante)}
-                            disabled={loading === comprovante.id}
-                            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <button
+                          onClick={() => setSelectedVoucher(comprovante)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-1"
+                          title="Visualizar"
+                        >
+                          <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
+                        </button>
+                        {comprovante.status === 'pendente' && (
+                          <>
+                            <button
+                              onClick={() => handleApprove(comprovante)}
+                              disabled={loading === comprovante.id}
+                              className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 disabled:opacity-50 p-1"
+                              title="Aprovar"
+                            >
+                              <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleReject(comprovante)}
+                              disabled={loading === comprovante.id}
+                              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50 p-1"
+                              title="Rejeitar"
+                            >
+                              <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -223,7 +228,7 @@ const VoucherManagement: React.FC = () => {
       {selectedVoucher && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto">
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Comprovante de Pagamento</h3>
                 <button
@@ -235,7 +240,7 @@ const VoucherManagement: React.FC = () => {
               </div>
               
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Usuário</label>
                     <p className="text-gray-900 dark:text-white">{selectedVoucher.usuario_nome}</p>
@@ -273,7 +278,7 @@ const VoucherManagement: React.FC = () => {
                 </div>
 
                 {selectedVoucher.status === 'pendente' && (
-                  <div className="flex space-x-3 pt-4">
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
                     <button
                       onClick={() => handleApprove(selectedVoucher)}
                       disabled={loading === selectedVoucher.id}
