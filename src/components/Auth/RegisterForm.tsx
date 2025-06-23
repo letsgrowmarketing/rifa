@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, CreditCard, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail, validateCPF, formatCPF } from '../../utils/auth';
@@ -18,7 +18,19 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [systemConfig, setSystemConfig] = useState({
+    systemName: 'Sistema de Rifas',
+    logoUrl: ''
+  });
   const { register } = useAuth();
+
+  useEffect(() => {
+    const config = JSON.parse(localStorage.getItem('systemConfig') || '{}');
+    setSystemConfig({
+      systemName: config.systemName || 'Sistema de Rifas',
+      logoUrl: config.logoUrl || ''
+    });
+  }, []);
 
   const handleCPFChange = (value: string) => {
     const formatted = formatCPF(value);
@@ -66,10 +78,20 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-white font-bold text-2xl">R</span>
+        <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+          {systemConfig.logoUrl ? (
+            <img 
+              src={systemConfig.logoUrl} 
+              alt="Logo" 
+              className="w-16 h-16 object-contain"
+            />
+          ) : (
+            <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center">
+              <span className="text-white font-bold text-2xl">R</span>
+            </div>
+          )}
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sistema de Rifas</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{systemConfig.systemName}</h1>
         <p className="text-gray-600 dark:text-gray-300 mt-2">Criar nova conta</p>
       </div>
 
