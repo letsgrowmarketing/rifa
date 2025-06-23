@@ -10,37 +10,131 @@
 
 /* Custom color utilities */
 .bg-primary {
-  background-color: var(--primary-color);
+  background-color: var(--primary-color) !important;
 }
 
 .text-primary {
-  color: var(--primary-color);
+  color: var(--primary-color) !important;
 }
 
 .border-primary {
-  border-color: var(--primary-color);
+  border-color: var(--primary-color) !important;
 }
 
 .bg-secondary {
-  background-color: var(--secondary-color);
+  background-color: var(--secondary-color) !important;
 }
 
 .text-secondary {
-  color: var(--secondary-color);
+  color: var(--secondary-color) !important;
 }
 
 .border-secondary {
-  border-color: var(--secondary-color);
+  border-color: var(--secondary-color) !important;
 }
 
 .bg-accent {
-  background-color: var(--accent-color);
+  background-color: var(--accent-color) !important;
 }
 
 .text-accent {
-  color: var(--accent-color);
+  color: var(--accent-color) !important;
 }
 
 .border-accent {
-  border-color: var(--accent-color);
+  border-color: var(--accent-color) !important;
+}
+
+/* Override Tailwind green colors with custom primary color */
+.bg-green-600 {
+  background-color: var(--primary-color) !important;
+}
+
+.bg-green-500 {
+  background-color: var(--primary-color) !important;
+}
+
+.bg-green-700 {
+  background-color: color-mix(in srgb, var(--primary-color) 85%, black) !important;
+}
+
+.text-green-600 {
+  color: var(--primary-color) !important;
+}
+
+.text-green-500 {
+  color: var(--primary-color) !important;
+}
+
+.text-green-700 {
+  color: color-mix(in srgb, var(--primary-color) 85%, black) !important;
+}
+
+.border-green-600 {
+  border-color: var(--primary-color) !important;
+}
+
+.border-green-500 {
+  border-color: var(--primary-color) !important;
+}
+
+.border-green-200 {
+  border-color: color-mix(in srgb, var(--primary-color) 20%, white) !important;
+}
+
+.border-green-300 {
+  border-color: color-mix(in srgb, var(--primary-color) 30%, white) !important;
+}
+
+.bg-green-100 {
+  background-color: color-mix(in srgb, var(--primary-color) 10%, white) !important;
+}
+
+.bg-green-50 {
+  background-color: color-mix(in srgb, var(--primary-color) 5%, white) !important;
+}
+
+.hover\:bg-green-700:hover {
+  background-color: color-mix(in srgb, var(--primary-color) 85%, black) !important;
+}
+
+.hover\:bg-green-600:hover {
+  background-color: var(--primary-color) !important;
+}
+
+.hover\:text-green-700:hover {
+  color: color-mix(in srgb, var(--primary-color) 85%, black) !important;
+}
+
+.hover\:text-green-500:hover {
+  color: var(--primary-color) !important;
+}
+
+.hover\:border-green-300:hover {
+  border-color: color-mix(in srgb, var(--primary-color) 30%, white) !important;
+}
+
+.focus\:ring-green-500:focus {
+  --tw-ring-color: var(--primary-color) !important;
+}
+
+/* Dark mode overrides */
+.dark .bg-green-900 {
+  background-color: color-mix(in srgb, var(--primary-color) 20%, black) !important;
+}
+
+.dark .text-green-400 {
+  color: color-mix(in srgb, var(--primary-color) 80%, white) !important;
+}
+
+.dark .text-green-200 {
+  color: color-mix(in srgb, var(--primary-color) 60%, white) !important;
+}
+
+.dark .border-green-700 {
+  border-color: color-mix(in srgb, var(--primary-color) 40%, black) !important;
+}
+
+.dark .hover\:bg-green-800:hover {
+  background-color: color-mix(in srgb, var(--primary-color) 30%, black) !important;
 }

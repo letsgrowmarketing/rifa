@@ -56,6 +56,17 @@ const SystemSettings: React.FC = () => {
       if (parsed.logoUrl) {
         setLogoPreview(parsed.logoUrl);
       }
+
+      // Apply colors immediately on load
+      if (parsed.primaryColor) {
+        document.documentElement.style.setProperty('--primary-color', parsed.primaryColor);
+      }
+      if (parsed.secondaryColor) {
+        document.documentElement.style.setProperty('--secondary-color', parsed.secondaryColor);
+      }
+      if (parsed.accentColor) {
+        document.documentElement.style.setProperty('--accent-color', parsed.accentColor);
+      }
     }
 
     // Load users
@@ -77,6 +88,9 @@ const SystemSettings: React.FC = () => {
     // Update page title
     document.title = config.systemName;
     
+    // Force a re-render by updating a class on the body
+    document.body.className = document.body.className;
+    
     setTimeout(() => {
       setSaving(false);
       setSaved(true);
@@ -89,6 +103,13 @@ const SystemSettings: React.FC = () => {
       ...prev,
       [key]: value
     }));
+
+    // Apply colors immediately when changed
+    if (key === 'primaryColor' || key === 'secondaryColor' || key === 'accentColor') {
+      const cssVar = key === 'primaryColor' ? '--primary-color' : 
+                    key === 'secondaryColor' ? '--secondary-color' : '--accent-color';
+      document.documentElement.style.setProperty(cssVar, value);
+    }
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -279,20 +300,26 @@ const SystemSettings: React.FC = () => {
             <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Prévia das Cores</h4>
             <div className="flex space-x-4">
               <div 
-                className="w-16 h-16 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600"
+                className="w-16 h-16 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 flex items-center justify-center"
                 style={{ backgroundColor: config.primaryColor }}
                 title="Cor Primária"
-              ></div>
+              >
+                <span className="text-white font-bold text-xs">PRIM</span>
+              </div>
               <div 
-                className="w-16 h-16 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600"
+                className="w-16 h-16 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 flex items-center justify-center"
                 style={{ backgroundColor: config.secondaryColor }}
                 title="Cor Secundária"
-              ></div>
+              >
+                <span className="text-white font-bold text-xs">SEC</span>
+              </div>
               <div 
-                className="w-16 h-16 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600"
+                className="w-16 h-16 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 flex items-center justify-center"
                 style={{ backgroundColor: config.accentColor }}
                 title="Cor de Destaque"
-              ></div>
+              >
+                <span className="text-white font-bold text-xs">DEST</span>
+              </div>
             </div>
           </div>
         </div>
