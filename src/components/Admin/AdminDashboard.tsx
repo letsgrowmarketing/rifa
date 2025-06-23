@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, FileText, Trophy, TrendingUp, DollarSign, CheckCircle, XCircle, Clock, BarChart3, PieChart } from 'lucide-react';
+import { Users, FileText, Trophy, TrendingUp, DollarSign, CheckCircle, XCircle, Clock, BarChart3, PieChart, Hash } from 'lucide-react';
 import { Comprovante, Sorteio, User } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/raffle';
+import RaffleNumberManagement from './RaffleNumberManagement';
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -21,6 +22,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [recentActivity, setRecentActivity] = useState<Comprovante[]>([]);
   const [topUsers, setTopUsers] = useState<Array<{user: User, totalDeposited: number, totalApproved: number}>>([]);
   const [monthlyData, setMonthlyData] = useState<Array<{month: string, deposits: number, revenue: number}>>([]);
+  const [currentRaffle, setCurrentRaffle] = useState<Sorteio | null>(null);
+  const [showNumberManagement, setShowNumberManagement] = useState(false);
 
   useEffect(() => {
     const loadStats = () => {
@@ -48,6 +51,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         totalRevenue,
         totalDeposited
       });
+
+      // Get current raffle
+      const current = sorteios.find(s => s.status === 'aberto');
+      setCurrentRaffle(current || null);
 
       // Get recent activity (last 5 vouchers)
       const recent = comprovantes
@@ -95,6 +102,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Painel Administrativo</h1>
         <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm sm:text-base">Visão geral do sistema de rifas</p>
       </div>
+
+      {/* Current Raffle Management */}
+      {currentRaffle && (
+        <div className="mb-6 lg:mb-8 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg border border-blue-200 dark:border-blue-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center space-x-3 mb-2">
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
+                <h2 className="text-base sm:text-lg font-semibold text-blue-900 dark:text-blue-100">Rifa Atual</h2>
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold text-blue-800 dark:text-blue-200 mb-1">{currentRaffle.nome}</h3>
+              <p className="text-blue-700 dark:text-blue-300 text-sm sm:text-base">
+                Status: <span className="font-medium">Aberta para participação</span>
+              </p>
+            </div>
+            <button
+              onClick={() => setShowNumberManagement(true)}
+              className="flex items-center space-x-2 bg-blue-600 dark:bg-blue-500 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm sm:text-base"
+            >
+              <Hash className="w-4 h-4" />
+              <span>Gerenciar Números</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
@@ -349,6 +381,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           </div>
         )}
       </div>
+
+      {/* Number Management Modal */}
+      {showNumberManagement && currentRaffle && (
+        <RaffleNumberManagement
+          sorteio={currentRaffle}
+          onClose={() => setShowNumberManagement(false)}
+        />
+      )}
     </div>
   );
 };
