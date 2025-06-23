@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Comprovante, NumeroRifa, Sorteio } from '../../types';
 import DashboardCard from './DashboardCard';
 import { formatCurrency } from '../../utils/raffle';
+import { supabase } from '../../lib/supabase';
 
 interface UserDashboardProps {
   onNavigate: (page: string) => void;
@@ -21,13 +22,37 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
   const [showVideoModal, setShowVideoModal] = useState(false);
 
   useEffect(() => {
-    const loadStats = () => {
-      const comprovantes: Comprovante[] = JSON.parse(localStorage.getItem('comprovantes') || '[]');
-      const numeros: NumeroRifa[] = JSON.parse(localStorage.getItem('numerosRifa') || '[]');
-      const sorteios: Sorteio[] = JSON.parse(localStorage.getItem('sorteios') || '[]');
+    if (user) {
+      loadStats();
+    }
+  }, [user?.id]);
 
-      const userComprovantes = comprovantes.filter(c => c.id_usuario === user?.id);
-      const userNumeros = numeros.filter(n => n.id_usuario === user?.id);
+  const loadStats = async () => {
+    if (!user) return;
+
+    try {
+      // Load comprovantes
+      const { data: comprovantes } = await supabase
+        .from('comprovantes')
+        .select('*')
+        .eq('user_id', user.id);
+
+      // Load numeros
+      const { data: numeros } = await supabase
+        .from('numeros_rifa')
+        .select('*')
+        .eq('user_id', user.id);
+
+      // Load current raffle
+      const { data: sorteios } = await supabase
+        .from('sorteios')
+        .select('*')
+        .eq('status', 'aberto')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const userComprovantes = comprovantes || [];
+      const userNumeros = numeros || [];
       const pendentes = userComprovantes.filter(c => c.status === 'pendente').length;
       const valorTotal = userComprovantes
         .filter(c => c.status === 'aprovado')
@@ -40,14 +65,11 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
         valorTotal
       });
 
-      const current = sorteios.find(s => s.status === 'aberto');
-      setCurrentRaffle(current || null);
-    };
-
-    loadStats();
-    const interval = setInterval(loadStats, 5000);
-    return () => clearInterval(interval);
-  }, [user?.id]);
+      setCurrentRaffle(sorteios?.[0] || null);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
 
   const extractVideoUrl = (iframe: string): string => {
     const srcMatch = iframe.match(/src="([^"]+)"/);

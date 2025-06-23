@@ -1,21 +1,22 @@
 export interface User {
   id: string;
   nome: string;
-  email: string;
   cpf: string;
-  senha_hash: string;
-  data_cadastro: string;
-  isAdmin?: boolean;
+  role: 'user' | 'admin';
+  created_at: string;
+  updated_at: string;
+  auth_id?: string;
 }
 
 export interface Comprovante {
   id: string;
-  id_usuario: string;
+  user_id: string;
   valor_informado: number;
   imagem_comprovante: string;
   valor_lido?: number;
   status: 'pendente' | 'aprovado' | 'rejeitado';
-  data_envio: string;
+  created_at: string;
+  updated_at: string;
   usuario_nome?: string;
   cupom_usado?: string;
   desconto_aplicado?: number;
@@ -23,16 +24,19 @@ export interface Comprovante {
 
 export interface NumeroRifa {
   id: string;
-  id_usuario: string;
-  id_sorteio: string;
+  user_id: string;
+  sorteio_id: string;
   numero_gerado: string;
+  created_at: string;
 }
 
 export interface Premio {
   id: string;
+  sorteio_id?: string;
   nome: string;
   quantidade_numeros: number;
-  ordem: number; // 1 = principal, 2 = segundo, etc.
+  ordem: number;
+  created_at?: string;
 }
 
 export interface Sorteio {
@@ -51,31 +55,36 @@ export interface Sorteio {
     numero_maximo: number;
     numeros_por_usuario?: number;
   };
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Cupom {
   id: string;
   codigo: string;
   tipo: 'quantidade' | 'percentual';
-  valor: number; // quantidade de números extras ou % de desconto
+  valor: number;
   ativo: boolean;
   data_criacao: string;
   data_expiracao?: string;
   uso_maximo?: number;
   uso_atual: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface HistoricoVencedor {
   id: string;
-  id_usuario: string;
-  id_sorteio: string;
+  user_id: string;
+  sorteio_id: string;
   numeros_premiados: string[];
   data: string;
 }
 
 export interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: Omit<User, 'id' | 'data_cadastro' | 'senha_hash'> & { senha: string }) => Promise<boolean>;
-  logout: () => void;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (userData: Omit<User, 'id' | 'created_at' | 'updated_at'> & { senha: string; email: string }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
 }
