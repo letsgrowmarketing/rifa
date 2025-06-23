@@ -15,6 +15,7 @@ import RaffleManagement from './components/Admin/RaffleManagement';
 import UserManagement from './components/Admin/UserManagement';
 import PlayerSearch from './components/Admin/PlayerSearch';
 import SystemSettings from './components/Admin/SystemSettings';
+import CouponManagement from './components/Admin/CouponManagement';
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
@@ -48,6 +49,8 @@ const AppContent: React.FC = () => {
           return <RaffleManagement />;
         case 'search':
           return <PlayerSearch />;
+        case 'coupons':
+          return <CouponManagement />;
         case 'settings':
           return <SystemSettings />;
         default:
@@ -77,6 +80,7 @@ const AppContent: React.FC = () => {
         case 'vouchers': return 'Gerenciar Comprovantes';
         case 'raffles': return 'Gerenciar Sorteios';
         case 'search': return 'Buscar Jogadores';
+        case 'coupons': return 'Gerenciar Cupons';
         case 'settings': return 'Configurações do Sistema';
         default: return 'Painel Administrativo';
       }

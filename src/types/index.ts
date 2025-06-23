@@ -17,6 +17,8 @@ export interface Comprovante {
   status: 'pendente' | 'aprovado' | 'rejeitado';
   data_envio: string;
   usuario_nome?: string;
+  cupom_usado?: string;
+  desconto_aplicado?: number;
 }
 
 export interface NumeroRifa {
@@ -24,6 +26,13 @@ export interface NumeroRifa {
   id_usuario: string;
   id_sorteio: string;
   numero_gerado: string;
+}
+
+export interface Premio {
+  id: string;
+  nome: string;
+  quantidade_numeros: number;
+  ordem: number; // 1 = principal, 2 = segundo, etc.
 }
 
 export interface Sorteio {
@@ -35,12 +44,25 @@ export interface Sorteio {
   ganhador_id?: string;
   video_link?: string;
   numeros_premiados?: string[];
+  premios?: Premio[];
   configuracao?: {
     total_numeros: number;
     numero_minimo: number;
     numero_maximo: number;
     numeros_por_usuario?: number;
   };
+}
+
+export interface Cupom {
+  id: string;
+  codigo: string;
+  tipo: 'quantidade' | 'percentual';
+  valor: number; // quantidade de números extras ou % de desconto
+  ativo: boolean;
+  data_criacao: string;
+  data_expiracao?: string;
+  uso_maximo?: number;
+  uso_atual: number;
 }
 
 export interface HistoricoVencedor {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trophy, Calendar, Users, Play, X, Link, Settings, Dice1, Globe, Edit, Hash } from 'lucide-react';
-import { Sorteio, NumeroRifa, User } from '../../types';
+import { Plus, Trophy, Calendar, Users, Play, X, Link, Settings, Dice1, Globe, Edit, Hash, Award, Trash2 } from 'lucide-react';
+import { Sorteio, NumeroRifa, User, Premio } from '../../types';
 import { formatDate } from '../../utils/raffle';
 
 const RaffleManagement: React.FC = () => {
@@ -18,6 +18,9 @@ const RaffleManagement: React.FC = () => {
     numero_maximo: 1000,
     numeros_por_usuario: 10
   });
+  const [premios, setPremios] = useState<Premio[]>([
+    { id: '1', nome: 'Prêmio Principal', quantidade_numeros: 1, ordem: 1 }
+  ]);
 
   useEffect(() => {
     const loadSorteios = () => {
@@ -27,6 +30,28 @@ const RaffleManagement: React.FC = () => {
 
     loadSorteios();
   }, []);
+
+  const addPremio = () => {
+    const newPremio: Premio = {
+      id: Date.now().toString(),
+      nome: `Prêmio ${premios.length + 1}`,
+      quantidade_numeros: 1,
+      ordem: premios.length + 1
+    };
+    setPremios([...premios, newPremio]);
+  };
+
+  const removePremio = (id: string) => {
+    if (premios.length > 1) {
+      setPremios(premios.filter(p => p.id !== id));
+    }
+  };
+
+  const updatePremio = (id: string, field: keyof Premio, value: any) => {
+    setPremios(premios.map(p => 
+      p.id === id ? { ...p, [field]: value } : p
+    ));
+  };
 
   const createRaffle = () => {
     if (!newRaffle.nome.trim()) return;
@@ -53,6 +78,7 @@ const RaffleManagement: React.FC = () => {
       data_inicio: new Date().toISOString(),
       status: 'aberto',
       video_link: newRaffle.video_link.trim() ? convertToIframe(newRaffle.video_link.trim()) : undefined,
+      premios: premios.map((p, index) => ({ ...p, ordem: index + 1 })),
       configuracao: {
         total_numeros: newRaffle.total_numeros,
         numero_minimo: newRaffle.numero_minimo,
@@ -73,6 +99,7 @@ const RaffleManagement: React.FC = () => {
       numero_maximo: 1000,
       numeros_por_usuario: 10
     });
+    setPremios([{ id: '1', nome: 'Prêmio Principal', quantidade_numeros: 1, ordem: 1 }]);
     setShowCreateModal(false);
   };
 
@@ -114,14 +141,16 @@ const RaffleManagement: React.FC = () => {
         return;
       }
     } else if (resultType === 'auto') {
-      // Automatic draw - pick random winning numbers
-      const winningCount = Math.min(3, raffleNumbers.length);
+      // Automatic draw based on prizes configuration
+      const totalWinners = showResultModal.premios?.reduce((sum, p) => sum + p.quantidade_numeros, 0) || 1;
+      const winningCount = Math.min(totalWinners, raffleNumbers.length);
       const shuffled = [...raffleNumbers].sort(() => 0.5 - Math.random());
       const winners = shuffled.slice(0, winningCount);
       winningNumbers = winners.map(w => w.numero_gerado);
     } else if (resultType === 'federal') {
       // Simulate federal lottery scraping
-      winningNumbers = generateFederalNumbers();
+      const totalWinners = showResultModal.premios?.reduce((sum, p) => sum + p.quantidade_numeros, 0) || 1;
+      winningNumbers = generateFederalNumbers(totalWinners);
     }
 
     const winnerId = raffleNumbers.find(n => winningNumbers.includes(n.numero_gerado))?.id_usuario;
@@ -144,10 +173,10 @@ const RaffleManagement: React.FC = () => {
     setManualNumbers('');
   };
 
-  const generateFederalNumbers = (): string[] => {
+  const generateFederalNumbers = (count: number): string[] => {
     // Simulate federal lottery numbers
     const numbers = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < count; i++) {
       numbers.push(Math.floor(10000 + Math.random() * 90000).toString());
     }
     return numbers;
@@ -271,6 +300,26 @@ const RaffleManagement: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Prizes Display */}
+                    {sorteio.premios && sorteio.premios.length > 0 && (
+                      <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+                        <h4 className="text-sm font-medium text-yellow-700 dark:text-yellow-300 mb-2 flex items-center">
+                          <Award className="w-4 h-4 mr-1" />
+                          Prêmios Configurados
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {sorteio.premios.map((premio) => (
+                            <div key={premio.id} className="text-xs bg-yellow-100 dark:bg-yellow-800 p-2 rounded">
+                              <span className="font-medium text-yellow-800 dark:text-yellow-200">{premio.nome}</span>
+                              <span className="text-yellow-600 dark:text-yellow-300 ml-1">
+                                ({premio.quantidade_numeros} número{premio.quantidade_numeros > 1 ? 's' : ''})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4">
                       <div className="bg-white dark:bg-gray-700 p-2 sm:p-3 rounded border dark:border-gray-600">
                         <div className="flex items-center">
@@ -364,7 +413,7 @@ const RaffleManagement: React.FC = () => {
       {/* Create Raffle Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-90vh overflow-y-auto">
             <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Criar Novo Sorteio</h3>
@@ -376,7 +425,7 @@ const RaffleManagement: React.FC = () => {
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nome do Sorteio
@@ -404,6 +453,58 @@ const RaffleManagement: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Será convertido automaticamente para iframe
                   </p>
+                </div>
+
+                {/* Prizes Configuration */}
+                <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white">Configuração dos Prêmios</h4>
+                    <button
+                      onClick={addPremio}
+                      className="flex items-center space-x-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Adicionar Prêmio</span>
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {premios.map((premio, index) => (
+                      <div key={premio.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                        <div className="flex items-center space-x-2">
+                          <Award className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {index + 1}º
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          value={premio.nome}
+                          onChange={(e) => updatePremio(premio.id, 'nome', e.target.value)}
+                          className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          placeholder="Nome do prêmio"
+                        />
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            min="1"
+                            value={premio.quantidade_numeros}
+                            onChange={(e) => updatePremio(premio.id, 'quantidade_numeros', parseInt(e.target.value) || 1)}
+                            className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          />
+                          <span className="text-xs text-gray-500 dark:text-gray-400">números</span>
+                        </div>
+                        {premios.length > 1 && (
+                          <button
+                            onClick={() => removePremio(premio.id)}
+                            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
@@ -468,6 +569,8 @@ const RaffleManagement: React.FC = () => {
                       <strong>Resumo:</strong> Sorteio com {newRaffle.total_numeros} números, 
                       variando de {newRaffle.numero_minimo} a {newRaffle.numero_maximo}, 
                       com {newRaffle.numeros_por_usuario} números por usuário.
+                      <br />
+                      <strong>Prêmios:</strong> {premios.reduce((sum, p) => sum + p.quantidade_numeros, 0)} números serão sorteados no total.
                     </p>
                   </div>
                 </div>
@@ -564,6 +667,22 @@ const RaffleManagement: React.FC = () => {
               </div>
               
               <div className="space-y-4">
+                {showResultModal.premios && showResultModal.premios.length > 0 && (
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+                    <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">Prêmios a serem sorteados:</h4>
+                    <div className="space-y-1">
+                      {showResultModal.premios.map((premio) => (
+                        <div key={premio.id} className="text-sm text-yellow-700 dark:text-yellow-300">
+                          • {premio.nome}: {premio.quantidade_numeros} número{premio.quantidade_numeros > 1 ? 's' : ''}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                      Total: {showResultModal.premios.reduce((sum, p) => sum + p.quantidade_numeros, 0)} números serão sorteados
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Tipo de Resultado

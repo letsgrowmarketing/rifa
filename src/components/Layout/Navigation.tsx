@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Upload, Hash, History, Settings, Users, FileText, Trophy, Search, Cog } from 'lucide-react';
+import { Home, Upload, Hash, History, Settings, Users, FileText, Trophy, Search, Cog, Ticket } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface NavigationProps {
@@ -23,6 +23,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
     { id: 'vouchers', label: 'Comprovantes', icon: FileText },
     { id: 'raffles', label: 'Sorteios', icon: Trophy },
     { id: 'search', label: 'Buscar Jogadores', icon: Search },
+    { id: 'coupons', label: 'Cupons', icon: Ticket },
     { id: 'settings', label: 'Configurações', icon: Cog },
   ];
 

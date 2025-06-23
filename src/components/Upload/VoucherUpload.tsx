@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Image, DollarSign, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Upload, Image, DollarSign, AlertCircle, CheckCircle, Clock, Ticket } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { simulateAIValidation, generateRaffleNumbers, formatCurrency } from '../../utils/raffle';
-import { Comprovante, NumeroRifa, Sorteio } from '../../types';
+import { Comprovante, NumeroRifa, Sorteio, Cupom } from '../../types';
 
 const VoucherUpload: React.FC = () => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     valor: '',
-    imagem: null as File | null
+    imagem: null as File | null,
+    cupom: ''
   });
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,6 +19,11 @@ const VoucherUpload: React.FC = () => {
     blockValue: 100,
     numbersPerBlock: 10
   });
+  const [cupomValidation, setCupomValidation] = useState<{
+    valid: boolean;
+    cupom?: Cupom;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     const config = JSON.parse(localStorage.getItem('systemConfig') || '{}');
@@ -27,6 +33,56 @@ const VoucherUpload: React.FC = () => {
       numbersPerBlock: config.numbersPerBlock || 10
     });
   }, []);
+
+  const validateCoupon = (codigo: string) => {
+    if (!codigo.trim()) {
+      setCupomValidation(null);
+      return;
+    }
+
+    const cupons: Cupom[] = JSON.parse(localStorage.getItem('cupons') || '[]');
+    const cupom = cupons.find(c => c.codigo.toUpperCase() === codigo.toUpperCase());
+
+    if (!cupom) {
+      setCupomValidation({
+        valid: false,
+        message: 'Cupom não encontrado'
+      });
+      return;
+    }
+
+    if (!cupom.ativo) {
+      setCupomValidation({
+        valid: false,
+        message: 'Cupom inativo'
+      });
+      return;
+    }
+
+    if (cupom.data_expiracao && new Date(cupom.data_expiracao) < new Date()) {
+      setCupomValidation({
+        valid: false,
+        message: 'Cupom expirado'
+      });
+      return;
+    }
+
+    if (cupom.uso_maximo && cupom.uso_atual >= cupom.uso_maximo) {
+      setCupomValidation({
+        valid: false,
+        message: 'Cupom esgotado'
+      });
+      return;
+    }
+
+    setCupomValidation({
+      valid: true,
+      cupom,
+      message: cupom.tipo === 'quantidade' 
+        ? `+${cupom.valor} números extras`
+        : `${cupom.valor}% de desconto`
+    });
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -49,7 +105,27 @@ const VoucherUpload: React.FC = () => {
     setMessage({ type: 'info', text: 'Processando comprovante...' });
 
     try {
-      const valor = parseFloat(formData.valor);
+      let valor = parseFloat(formData.valor);
+      let descontoAplicado = 0;
+      let cupomUsado = '';
+
+      // Apply coupon if valid
+      if (cupomValidation?.valid && cupomValidation.cupom) {
+        const cupom = cupomValidation.cupom;
+        cupomUsado = cupom.codigo;
+
+        if (cupom.tipo === 'percentual') {
+          descontoAplicado = valor * (cupom.valor / 100);
+          valor = valor - descontoAplicado;
+        }
+
+        // Update coupon usage
+        const cupons: Cupom[] = JSON.parse(localStorage.getItem('cupons') || '[]');
+        const updatedCupons = cupons.map(c => 
+          c.id === cupom.id ? { ...c, uso_atual: c.uso_atual + 1 } : c
+        );
+        localStorage.setItem('cupons', JSON.stringify(updatedCupons));
+      }
       
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -58,11 +134,13 @@ const VoucherUpload: React.FC = () => {
         const comprovante: Comprovante = {
           id: Date.now().toString(),
           id_usuario: user.id,
-          valor_informado: valor,
+          valor_informado: parseFloat(formData.valor),
           imagem_comprovante: base64,
           status: 'pendente',
           data_envio: new Date().toISOString(),
-          usuario_nome: user.nome
+          usuario_nome: user.nome,
+          cupom_usado: cupomUsado || undefined,
+          desconto_aplicado: descontoAplicado > 0 ? descontoAplicado : undefined
         };
 
         setMessage({ type: 'info', text: 'Validando comprovante com IA...' });
@@ -77,10 +155,19 @@ const VoucherUpload: React.FC = () => {
           const currentRaffle = sorteios.find(s => s.status === 'aberto');
           
           if (currentRaffle) {
-            const numbers = generateRaffleNumbers(valor, currentRaffle.configuracao);
+            let numbers = generateRaffleNumbers(valor, currentRaffle.configuracao);
+            
+            // Add bonus numbers from coupon
+            if (cupomValidation?.valid && cupomValidation.cupom?.tipo === 'quantidade') {
+              const bonusNumbers = generateRaffleNumbers(
+                cupomValidation.cupom.valor * systemConfig.blockValue, 
+                currentRaffle.configuracao
+              );
+              numbers = [...numbers, ...bonusNumbers];
+            }
             
             const numerosRifa: NumeroRifa[] = numbers.map(numero => ({
-              id: `${Date.now()}-${numero}`,
+              id: `${Date.now()}-${numero}-${Math.random()}`,
               id_usuario: user.id,
               id_sorteio: currentRaffle.id,
               numero_gerado: numero
@@ -90,9 +177,14 @@ const VoucherUpload: React.FC = () => {
             localStorage.setItem('numerosRifa', JSON.stringify([...existingNumbers, ...numerosRifa]));
           }
           
+          let successMessage = 'Comprovante aprovado! Números gerados automaticamente.';
+          if (cupomUsado) {
+            successMessage += ` Cupom ${cupomUsado} aplicado com sucesso!`;
+          }
+          
           setMessage({ 
             type: 'success', 
-            text: `Comprovante aprovado! Números gerados automaticamente.` 
+            text: successMessage
           });
         } else {
           setMessage({ 
@@ -104,8 +196,9 @@ const VoucherUpload: React.FC = () => {
         const comprovantes = JSON.parse(localStorage.getItem('comprovantes') || '[]');
         localStorage.setItem('comprovantes', JSON.stringify([...comprovantes, comprovante]));
 
-        setFormData({ valor: '', imagem: null });
+        setFormData({ valor: '', imagem: null, cupom: '' });
         setPreview(null);
+        setCupomValidation(null);
       };
       
       reader.readAsDataURL(formData.imagem);
@@ -118,9 +211,26 @@ const VoucherUpload: React.FC = () => {
 
   const calculateNumbers = (valor: string) => {
     const valorNum = parseFloat(valor) || 0;
-    const blocks = Math.floor(valorNum / systemConfig.blockValue);
-    return blocks * systemConfig.numbersPerBlock;
+    let finalValue = valorNum;
+
+    // Apply coupon discount
+    if (cupomValidation?.valid && cupomValidation.cupom?.tipo === 'percentual') {
+      const desconto = valorNum * (cupomValidation.cupom.valor / 100);
+      finalValue = valorNum - desconto;
+    }
+
+    const blocks = Math.floor(finalValue / systemConfig.blockValue);
+    let totalNumbers = blocks * systemConfig.numbersPerBlock;
+
+    // Add bonus numbers from coupon
+    if (cupomValidation?.valid && cupomValidation.cupom?.tipo === 'quantidade') {
+      totalNumbers += cupomValidation.cupom.valor;
+    }
+
+    return { totalNumbers, finalValue, discount: valorNum - finalValue };
   };
+
+  const numbersInfo = calculateNumbers(formData.valor);
 
   return (
     <div className="w-full max-w-2xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 overflow-x-hidden">
@@ -153,11 +263,44 @@ const VoucherUpload: React.FC = () => {
                 Valor mínimo: {formatCurrency(systemConfig.minDepositAmount)} • Cada {formatCurrency(systemConfig.blockValue)} = {systemConfig.numbersPerBlock} números
               </p>
               {formData.valor && (
-                <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                  = {calculateNumbers(formData.valor)} números
-                </p>
+                <div className="text-sm font-medium text-green-600 dark:text-green-400">
+                  {numbersInfo.discount > 0 && (
+                    <div className="text-blue-600 dark:text-blue-400">
+                      Desconto: {formatCurrency(numbersInfo.discount)}
+                    </div>
+                  )}
+                  <div>= {numbersInfo.totalNumbers} números</div>
+                </div>
               )}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Cupom de Desconto (opcional)
+            </label>
+            <div className="relative">
+              <Ticket className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+              <input
+                type="text"
+                value={formData.cupom}
+                onChange={(e) => {
+                  setFormData({...formData, cupom: e.target.value});
+                  validateCoupon(e.target.value);
+                }}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="Digite o código do cupom"
+              />
+            </div>
+            {cupomValidation && (
+              <div className={`mt-2 p-2 rounded-md text-sm ${
+                cupomValidation.valid 
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700'
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700'
+              }`}>
+                {cupomValidation.message}
+              </div>
+            )}
           </div>
 
           <div>
@@ -236,15 +379,15 @@ const VoucherUpload: React.FC = () => {
           </li>
           <li className="flex items-start">
             <div className="w-2 h-2 bg-blue-400 dark:bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+            <span className="text-sm sm:text-base">Use cupons para ganhar números extras ou descontos</span>
+          </li>
+          <li className="flex items-start">
+            <div className="w-2 h-2 bg-blue-400 dark:bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
             <span className="text-sm sm:text-base">O comprovante é validado automaticamente por IA</span>
           </li>
           <li className="flex items-start">
             <div className="w-2 h-2 bg-blue-400 dark:bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
             <span className="text-sm sm:text-base">Números são gerados instantaneamente após aprovação</span>
-          </li>
-          <li className="flex items-start">
-            <div className="w-2 h-2 bg-blue-400 dark:bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-            <span className="text-sm sm:text-base">Você pode acompanhar o status na aba "Meus Números"</span>
           </li>
         </ul>
       </div>
