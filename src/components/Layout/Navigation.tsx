@@ -27,7 +27,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
     { id: 'settings', label: 'Configurações', icon: Cog },
   ];
 
-  const menuItems = user?.isAdmin ? adminMenuItems : userMenuItems;
+  const menuItems = user?.role === 'admin' ? adminMenuItems : userMenuItems;
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-sm border-r border-gray-200 dark:border-gray-700 w-16 md:w-64 min-h-screen">

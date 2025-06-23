@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, User, CreditCard, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, CreditCard, Eye, EyeOff, Loader } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail, validateCPF, formatCPF } from '../../utils/auth';
+import { supabase } from '../../lib/supabase';
 
 interface RegisterFormProps {
   onToggleMode: () => void;
@@ -16,7 +17,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
     confirmarSenha: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [systemConfig, setSystemConfig] = useState({
     systemName: 'Sistema de Rifas',
@@ -25,12 +26,29 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const { register } = useAuth();
 
   useEffect(() => {
-    const config = JSON.parse(localStorage.getItem('systemConfig') || '{}');
-    setSystemConfig({
-      systemName: config.systemName || 'Sistema de Rifas',
-      logoUrl: config.logoUrl || ''
-    });
+    loadSystemConfig();
   }, []);
+
+  const loadSystemConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from('system_config')
+        .select('key, value')
+        .in('key', ['system_name', 'logo_url']);
+
+      const config = data?.reduce((acc, item) => {
+        acc[item.key] = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+        return acc;
+      }, {} as any) || {};
+
+      setSystemConfig({
+        systemName: config.system_name || 'Sistema de Rifas',
+        logoUrl: config.logo_url || ''
+      });
+    } catch (error) {
+      console.error('Error loading system config:', error);
+    }
+  };
 
   const handleCPFChange = (value: string) => {
     const formatted = formatCPF(value);
@@ -39,39 +57,69 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors([]);
+    setError('');
     setLoading(true);
 
-    const newErrors: string[] = [];
-    
-    if (!formData.nome.trim()) newErrors.push('Nome é obrigatório');
-    if (!formData.email) newErrors.push('Email é obrigatório');
-    else if (!validateEmail(formData.email)) newErrors.push('Email inválido');
-    
-    if (!formData.cpf) newErrors.push('CPF é obrigatório');
-    else if (!validateCPF(formData.cpf)) newErrors.push('CPF inválido');
-    
-    if (!formData.senha) newErrors.push('Senha é obrigatória');
-    else if (formData.senha.length < 6) newErrors.push('Senha deve ter pelo menos 6 caracteres');
-    
-    if (formData.senha !== formData.confirmarSenha) newErrors.push('Senhas não coincidem');
-
-    if (newErrors.length > 0) {
-      setErrors(newErrors);
+    // Validation
+    if (!formData.nome.trim()) {
+      setError('Nome é obrigatório');
       setLoading(false);
       return;
     }
 
-    const success = await register({
+    if (!formData.email) {
+      setError('Email é obrigatório');
+      setLoading(false);
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      setError('Email inválido');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.cpf) {
+      setError('CPF é obrigatório');
+      setLoading(false);
+      return;
+    }
+
+    if (!validateCPF(formData.cpf)) {
+      setError('CPF inválido');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.senha) {
+      setError('Senha é obrigatória');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.senha.length < 6) {
+      setError('Senha deve ter pelo menos 6 caracteres');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.senha !== formData.confirmarSenha) {
+      setError('Senhas não coincidem');
+      setLoading(false);
+      return;
+    }
+
+    const result = await register({
       nome: formData.nome.trim(),
       email: formData.email,
       cpf: formData.cpf,
       senha: formData.senha
     });
 
-    if (!success) {
-      setErrors(['Email ou CPF já cadastrados']);
+    if (!result.success) {
+      setError(result.error || 'Erro ao criar conta');
     }
+
     setLoading(false);
   };
 
@@ -96,11 +144,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {errors.length > 0 && (
+        {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md p-3">
-            {errors.map((error, index) => (
-              <p key={index} className="text-red-600 dark:text-red-400 text-sm">{error}</p>
-            ))}
+            <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
           </div>
         )}
 
@@ -116,6 +162,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               onChange={(e) => setFormData({...formData, nome: e.target.value})}
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="Seu nome completo"
+              disabled={loading}
             />
           </div>
         </div>
@@ -132,6 +179,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               onChange={(e) => setFormData({...formData, email: e.target.value})}
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="seu@email.com"
+              disabled={loading}
             />
           </div>
         </div>
@@ -149,6 +197,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="000.000.000-00"
               maxLength={14}
+              disabled={loading}
             />
           </div>
         </div>
@@ -165,11 +214,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               onChange={(e) => setFormData({...formData, senha: e.target.value})}
               className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="••••••••"
+              disabled={loading}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+              disabled={loading}
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
@@ -188,6 +239,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               onChange={(e) => setFormData({...formData, confirmarSenha: e.target.value})}
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="••••••••"
+              disabled={loading}
             />
           </div>
         </div>
@@ -195,9 +247,16 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
         >
-          {loading ? 'Criando conta...' : 'Criar conta'}
+          {loading ? (
+            <>
+              <Loader className="w-5 h-5 mr-2 animate-spin" />
+              Criando conta...
+            </>
+          ) : (
+            'Criar conta'
+          )}
         </button>
       </form>
 
@@ -207,6 +266,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
           <button
             onClick={onToggleMode}
             className="text-green-600 hover:text-green-700 font-medium"
+            disabled={loading}
           >
             Entrar
           </button>

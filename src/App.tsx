@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import LoginForm from './components/Auth/LoginForm';
 import RegisterForm from './components/Auth/RegisterForm';
@@ -16,11 +16,23 @@ import UserManagement from './components/Admin/UserManagement';
 import PlayerSearch from './components/Admin/PlayerSearch';
 import SystemSettings from './components/Admin/SystemSettings';
 import CouponManagement from './components/Admin/CouponManagement';
+import { Loader } from 'lucide-react';
 
 const AppContent: React.FC = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-8 h-8 animate-spin text-green-600 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-300">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -37,7 +49,7 @@ const AppContent: React.FC = () => {
   }
 
   const renderPage = () => {
-    if (user.isAdmin) {
+    if (user.role === 'admin') {
       switch (currentPage) {
         case 'dashboard':
           return <AdminDashboard onNavigate={setCurrentPage} />;
@@ -73,7 +85,7 @@ const AppContent: React.FC = () => {
   };
 
   const getPageTitle = () => {
-    if (user.isAdmin) {
+    if (user.role === 'admin') {
       switch (currentPage) {
         case 'dashboard': return 'Painel Administrativo';
         case 'users': return 'Gerenciar Usuários';
@@ -111,9 +123,7 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <AppContent />
     </ThemeProvider>
   );
 }

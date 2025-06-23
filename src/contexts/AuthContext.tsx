@@ -1,6 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, AuthContextType } from '../types';
-import { hashPassword, verifyPassword } from '../utils/auth';
+import { User as SupabaseUser } from '@supabase/supabase-js';
+import { supabase, getCurrentUserProfile } from '../lib/supabase';
+import { Database } from '../types/database';
+
+type UserProfile = Database['public']['Tables']['users']['Row'];
+
+interface AuthContextType {
+  user: UserProfile | null;
+  supabaseUser: SupabaseUser | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (userData: {
+    nome: string;
+    email: string;
+    cpf: string;
+    senha: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -17,84 +34,102 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize default admin user if it doesn't exist
-    const initializeAdmin = () => {
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const adminExists = users.find((u: User) => u.email === 'admin@rifa.com');
+    // Get initial session
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (!adminExists) {
-        const adminUser: User = {
-          id: 'admin-001',
-          nome: 'Administrador',
-          email: 'admin@rifa.com',
-          cpf: '000.000.000-00',
-          senha_hash: hashPassword('admin123'),
-          data_cadastro: new Date().toISOString(),
-          isAdmin: true
-        };
-        
-        users.push(adminUser);
-        localStorage.setItem('users', JSON.stringify(users));
+      if (session?.user) {
+        setSupabaseUser(session.user);
+        const profile = await getCurrentUserProfile();
+        setUser(profile);
       }
+      
+      setLoading(false);
     };
 
-    initializeAdmin();
+    getInitialSession();
 
-    // Check for stored user session
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          const profile = await getCurrentUserProfile();
+          setUser(profile);
+        } else {
+          setSupabaseUser(null);
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const foundUser = users.find((u: User) => u.email === email);
-    
-    if (foundUser && verifyPassword(password, foundUser.senha_hash)) {
-      setUser(foundUser);
-      localStorage.setItem('currentUser', JSON.stringify(foundUser));
-      return true;
+  const login = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Erro inesperado ao fazer login' };
     }
-    return false;
   };
 
-  const register = async (userData: Omit<User, 'id' | 'data_cadastro' | 'senha_hash'> & { senha: string }): Promise<boolean> => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    
-    // Check if user already exists
-    if (users.find((u: User) => u.email === userData.email || u.cpf === userData.cpf)) {
-      return false;
+  const register = async (userData: {
+    nome: string;
+    email: string;
+    cpf: string;
+    senha: string;
+  }) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.senha,
+        options: {
+          data: {
+            nome: userData.nome,
+            cpf: userData.cpf,
+          },
+        },
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Erro inesperado ao criar conta' };
     }
-
-    const newUser: User = {
-      id: Date.now().toString(),
-      nome: userData.nome,
-      email: userData.email,
-      cpf: userData.cpf,
-      senha_hash: hashPassword(userData.senha),
-      data_cadastro: new Date().toISOString(),
-      isAdmin: userData.email === 'admin@rifa.com' // Make admin if using admin email
-    };
-
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-    
-    setUser(newUser);
-    localStorage.setItem('currentUser', JSON.stringify(newUser));
-    return true;
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('currentUser');
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      supabaseUser,
+      loading,
+      login,
+      register,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );

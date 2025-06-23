@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LogOut, User, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { supabase } from '../../lib/supabase';
 
 interface HeaderProps {
   title: string;
@@ -16,12 +17,32 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
   });
 
   useEffect(() => {
-    const config = JSON.parse(localStorage.getItem('systemConfig') || '{}');
-    setSystemConfig({
-      systemName: config.systemName || 'Sistema de Rifas',
-      logoUrl: config.logoUrl || ''
-    });
+    loadSystemConfig();
   }, []);
+
+  const loadSystemConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from('system_config')
+        .select('key, value')
+        .in('key', ['system_name', 'logo_url']);
+
+      const config = data?.reduce((acc, item) => {
+        acc[item.key] = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+        return acc;
+      }, {} as any) || {};
+
+      setSystemConfig({
+        systemName: config.system_name || 'Sistema de Rifas',
+        logoUrl: config.logo_url || ''
+      });
+
+      // Update page title
+      document.title = config.system_name || 'Sistema de Rifas';
+    } catch (error) {
+      console.error('Error loading system config:', error);
+    }
+  };
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -58,7 +79,7 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
             <div className="hidden sm:flex items-center space-x-2">
               <User className="w-5 h-5 text-gray-400 dark:text-gray-300" />
               <span className="text-sm text-gray-700 dark:text-gray-200 truncate max-w-32">{user?.nome}</span>
-              {user?.isAdmin && (
+              {user?.role === 'admin' && (
                 <span className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full">
                   Admin
                 </span>
