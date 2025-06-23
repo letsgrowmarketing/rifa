@@ -48,52 +48,52 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
         <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
           <span className="text-white font-bold text-2xl">R</span>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900">Sistema de Rifas</h1>
-        <p className="text-gray-600 mt-2">Entre na sua conta</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sistema de Rifas</h1>
+        <p className="text-gray-600 dark:text-gray-300 mt-2">Entre na sua conta</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md p-3">
             {errors.map((error, index) => (
-              <p key={index} className="text-red-600 text-sm">{error}</p>
+              <p key={index} className="text-red-600 dark:text-red-400 text-sm">{error}</p>
             ))}
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Email
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="seu@email.com"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Senha
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
             <input
               type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="••••••••"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
@@ -110,7 +110,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
       </form>
 
       <div className="mt-6 text-center">
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-300">
           Não tem uma conta?{' '}
           <button
             onClick={onToggleMode}
@@ -121,8 +121,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
         </p>
       </div>
 
-      <div className="mt-8 p-4 bg-blue-50 rounded-md">
-        <p className="text-sm text-blue-700">
+      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+        <p className="text-sm text-blue-700 dark:text-blue-300">
           <strong>Conta de teste Admin:</strong><br />
           Email: admin@rifa.com<br />
           Senha: admin123

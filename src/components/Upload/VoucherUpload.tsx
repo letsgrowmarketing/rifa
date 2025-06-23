@@ -73,11 +73,12 @@ const VoucherUpload: React.FC = () => {
         if (validation.aprovado) {
           comprovante.status = 'aprovado';
           
-          const numbers = generateRaffleNumbers(valor);
           const sorteios: Sorteio[] = JSON.parse(localStorage.getItem('sorteios') || '[]');
           const currentRaffle = sorteios.find(s => s.status === 'aberto');
           
           if (currentRaffle) {
+            const numbers = generateRaffleNumbers(valor, currentRaffle.configuracao);
+            
             const numerosRifa: NumeroRifa[] = numbers.map(numero => ({
               id: `${Date.now()}-${numero}`,
               id_usuario: user.id,
@@ -91,7 +92,7 @@ const VoucherUpload: React.FC = () => {
           
           setMessage({ 
             type: 'success', 
-            text: `Comprovante aprovado! ${numbers.length} números gerados automaticamente.` 
+            text: `Comprovante aprovado! Números gerados automaticamente.` 
           });
         } else {
           setMessage({ 

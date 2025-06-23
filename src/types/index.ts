@@ -35,6 +35,12 @@ export interface Sorteio {
   ganhador_id?: string;
   video_link?: string;
   numeros_premiados?: string[];
+  configuracao?: {
+    total_numeros: number;
+    numero_minimo: number;
+    numero_maximo: number;
+    numeros_por_usuario?: number;
+  };
 }
 
 export interface HistoricoVencedor {

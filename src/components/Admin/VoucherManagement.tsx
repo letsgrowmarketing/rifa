@@ -45,11 +45,12 @@ const VoucherManagement: React.FC = () => {
     localStorage.setItem('comprovantes', JSON.stringify(allComprovantes));
 
     // Generate raffle numbers
-    const numbers = generateRaffleNumbers(comprovante.valor_informado);
     const sorteios: Sorteio[] = JSON.parse(localStorage.getItem('sorteios') || '[]');
     const currentRaffle = sorteios.find(s => s.status === 'aberto');
     
     if (currentRaffle) {
+      const numbers = generateRaffleNumbers(comprovante.valor_informado, currentRaffle.configuracao);
+      
       const numerosRifa: NumeroRifa[] = numbers.map(numero => ({
         id: `${Date.now()}-${numero}-${Math.random()}`,
         id_usuario: comprovante.id_usuario,
@@ -82,8 +83,8 @@ const VoucherManagement: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Gerenciar Comprovantes</h1>
-        <p className="text-gray-600 mt-1">Aprove ou rejeite comprovantes de pagamento</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gerenciar Comprovantes</h1>
+        <p className="text-gray-600 dark:text-gray-300 mt-1">Aprove ou rejeite comprovantes de pagamento</p>
       </div>
 
       <div className="mb-6">
@@ -99,8 +100,8 @@ const VoucherManagement: React.FC = () => {
               onClick={() => setFilter(key as any)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 filter === key
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               {label} ({count})
@@ -109,12 +110,12 @@ const VoucherManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         {filteredComprovantes.length === 0 ? (
           <div className="p-8 text-center">
-            <Eye className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum comprovante encontrado</h3>
-            <p className="text-gray-600">
+            <Eye className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Nenhum comprovante encontrado</h3>
+            <p className="text-gray-600 dark:text-gray-300">
               {filter === 'pendente' 
                 ? 'Não há comprovantes pendentes de aprovação.'
                 : `Não há comprovantes com status "${filter}".`
@@ -123,36 +124,36 @@ const VoucherManagement: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Usuário
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Valor
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Data
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredComprovantes.map((comprovante) => (
-                  <tr key={comprovante.id} className="hover:bg-gray-50">
+                  <tr key={comprovante.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="p-2 bg-gray-100 rounded-full mr-3">
-                          <User className="w-4 h-4 text-gray-600" />
+                        <div className="p-2 bg-gray-100 dark:bg-gray-600 rounded-full mr-3">
+                          <User className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
                             {comprovante.usuario_nome}
                           </div>
                         </div>
@@ -160,14 +161,14 @@ const VoucherManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <DollarSign className="w-4 h-4 text-gray-400 mr-1" />
-                        <span className="text-sm text-gray-900">
+                        <DollarSign className="w-4 h-4 text-gray-400 dark:text-gray-500 mr-1" />
+                        <span className="text-sm text-gray-900 dark:text-white">
                           {formatCurrency(comprovante.valor_informado)}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-500">
+                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                         <Calendar className="w-4 h-4 mr-1" />
                         {formatDate(comprovante.data_envio)}
                       </div>
@@ -175,10 +176,10 @@ const VoucherManagement: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         comprovante.status === 'aprovado' 
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                           : comprovante.status === 'rejeitado'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                          ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                          : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                       }`}>
                         {comprovante.status === 'aprovado' ? 'Aprovado' :
                          comprovante.status === 'rejeitado' ? 'Rejeitado' : 'Pendente'}
@@ -187,7 +188,7 @@ const VoucherManagement: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button
                         onClick={() => setSelectedVoucher(comprovante)}
-                        className="text-blue-600 hover:text-blue-700"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -196,14 +197,14 @@ const VoucherManagement: React.FC = () => {
                           <button
                             onClick={() => handleApprove(comprovante)}
                             disabled={loading === comprovante.id}
-                            className="text-green-600 hover:text-green-700 disabled:opacity-50"
+                            className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 disabled:opacity-50"
                           >
                             <Check className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleReject(comprovante)}
                             disabled={loading === comprovante.id}
-                            className="text-red-600 hover:text-red-700 disabled:opacity-50"
+                            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -221,13 +222,13 @@ const VoucherManagement: React.FC = () => {
       {/* Voucher Preview Modal */}
       {selectedVoucher && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Comprovante de Pagamento</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Comprovante de Pagamento</h3>
                 <button
                   onClick={() => setSelectedVoucher(null)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -236,25 +237,25 @@ const VoucherManagement: React.FC = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Usuário</label>
-                    <p className="text-gray-900">{selectedVoucher.usuario_nome}</p>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Usuário</label>
+                    <p className="text-gray-900 dark:text-white">{selectedVoucher.usuario_nome}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Valor Informado</label>
-                    <p className="text-gray-900">{formatCurrency(selectedVoucher.valor_informado)}</p>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Valor Informado</label>
+                    <p className="text-gray-900 dark:text-white">{formatCurrency(selectedVoucher.valor_informado)}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Data de Envio</label>
-                    <p className="text-gray-900">{formatDate(selectedVoucher.data_envio)}</p>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Envio</label>
+                    <p className="text-gray-900 dark:text-white">{formatDate(selectedVoucher.data_envio)}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       selectedVoucher.status === 'aprovado' 
-                        ? 'bg-green-100 text-green-800'
+                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                         : selectedVoucher.status === 'rejeitado'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                        : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
                     }`}>
                       {selectedVoucher.status === 'aprovado' ? 'Aprovado' :
                        selectedVoucher.status === 'rejeitado' ? 'Rejeitado' : 'Pendente'}
@@ -263,11 +264,11 @@ const VoucherManagement: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-gray-500 block mb-2">Comprovante</label>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 block mb-2">Comprovante</label>
                   <img 
                     src={selectedVoucher.imagem_comprovante} 
                     alt="Comprovante" 
-                    className="max-w-full h-auto rounded border"
+                    className="max-w-full h-auto rounded border border-gray-200 dark:border-gray-600"
                   />
                 </div>
 
@@ -276,14 +277,14 @@ const VoucherManagement: React.FC = () => {
                     <button
                       onClick={() => handleApprove(selectedVoucher)}
                       disabled={loading === selectedVoucher.id}
-                      className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      className="flex-1 bg-green-600 dark:bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 transition-colors"
                     >
                       {loading === selectedVoucher.id ? 'Aprovando...' : 'Aprovar'}
                     </button>
                     <button
                       onClick={() => handleReject(selectedVoucher)}
                       disabled={loading === selectedVoucher.id}
-                      className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
+                      className="flex-1 bg-red-600 dark:bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 transition-colors"
                     >
                       {loading === selectedVoucher.id ? 'Rejeitando...' : 'Rejeitar'}
                     </button>

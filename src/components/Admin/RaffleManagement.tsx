@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trophy, Calendar, Users, Play, X, Link, Settings, Dice1, Globe, Edit } from 'lucide-react';
+import { Plus, Trophy, Calendar, Users, Play, X, Link, Settings, Dice1, Globe, Edit, Hash } from 'lucide-react';
 import { Sorteio, NumeroRifa, User } from '../../types';
 import { formatDate } from '../../utils/raffle';
 
@@ -12,7 +12,11 @@ const RaffleManagement: React.FC = () => {
   const [manualNumbers, setManualNumbers] = useState('');
   const [newRaffle, setNewRaffle] = useState({
     nome: '',
-    video_link: ''
+    video_link: '',
+    total_numeros: 1000,
+    numero_minimo: 1,
+    numero_maximo: 1000,
+    numeros_por_usuario: 10
   });
 
   useEffect(() => {
@@ -27,6 +31,17 @@ const RaffleManagement: React.FC = () => {
   const createRaffle = () => {
     if (!newRaffle.nome.trim()) return;
 
+    // Validate number configuration
+    if (newRaffle.numero_minimo >= newRaffle.numero_maximo) {
+      alert('O número mínimo deve ser menor que o número máximo');
+      return;
+    }
+
+    if (newRaffle.total_numeros > (newRaffle.numero_maximo - newRaffle.numero_minimo + 1)) {
+      alert('O total de números não pode ser maior que o intervalo disponível');
+      return;
+    }
+
     // Close any existing open raffles
     const updatedSorteios = sorteios.map(s => 
       s.status === 'aberto' ? { ...s, status: 'encerrado' as const, data_fim: new Date().toISOString() } : s
@@ -37,14 +52,27 @@ const RaffleManagement: React.FC = () => {
       nome: newRaffle.nome.trim(),
       data_inicio: new Date().toISOString(),
       status: 'aberto',
-      video_link: newRaffle.video_link.trim() ? convertToIframe(newRaffle.video_link.trim()) : undefined
+      video_link: newRaffle.video_link.trim() ? convertToIframe(newRaffle.video_link.trim()) : undefined,
+      configuracao: {
+        total_numeros: newRaffle.total_numeros,
+        numero_minimo: newRaffle.numero_minimo,
+        numero_maximo: newRaffle.numero_maximo,
+        numeros_por_usuario: newRaffle.numeros_por_usuario
+      }
     };
 
     const allSorteios = [...updatedSorteios, novoSorteio];
     setSorteios(allSorteios);
     localStorage.setItem('sorteios', JSON.stringify(allSorteios));
 
-    setNewRaffle({ nome: '', video_link: '' });
+    setNewRaffle({ 
+      nome: '', 
+      video_link: '',
+      total_numeros: 1000,
+      numero_minimo: 1,
+      numero_maximo: 1000,
+      numeros_por_usuario: 10
+    });
     setShowCreateModal(false);
   };
 
@@ -221,6 +249,28 @@ const RaffleManagement: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Raffle Configuration Display */}
+                    {sorteio.configuracao && (
+                      <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Configuração do Sorteio</h4>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                          <div className="flex items-center">
+                            <Hash className="w-3 h-3 text-blue-500 dark:text-blue-400 mr-1" />
+                            <span className="text-gray-600 dark:text-gray-300">Total: {sorteio.configuracao.total_numeros}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-gray-600 dark:text-gray-300">Min: {sorteio.configuracao.numero_minimo}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-gray-600 dark:text-gray-300">Max: {sorteio.configuracao.numero_maximo}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-gray-600 dark:text-gray-300">Por usuário: {sorteio.configuracao.numeros_por_usuario}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4">
                       <div className="bg-white dark:bg-gray-700 p-2 sm:p-3 rounded border dark:border-gray-600">
                         <div className="flex items-center">
@@ -314,7 +364,7 @@ const RaffleManagement: React.FC = () => {
       {/* Create Raffle Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full max-h-90vh overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto">
             <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Criar Novo Sorteio</h3>
@@ -354,6 +404,72 @@ const RaffleManagement: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Será convertido automaticamente para iframe
                   </p>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                  <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Configuração dos Números</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Total de Números no Sorteio
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={newRaffle.total_numeros}
+                        onChange={(e) => setNewRaffle({...newRaffle, total_numeros: parseInt(e.target.value) || 1})}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Números por Usuário
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={newRaffle.numeros_por_usuario}
+                        onChange={(e) => setNewRaffle({...newRaffle, numeros_por_usuario: parseInt(e.target.value) || 1})}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Número Mínimo
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={newRaffle.numero_minimo}
+                        onChange={(e) => setNewRaffle({...newRaffle, numero_minimo: parseInt(e.target.value) || 1})}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Número Máximo
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={newRaffle.numero_maximo}
+                        onChange={(e) => setNewRaffle({...newRaffle, numero_maximo: parseInt(e.target.value) || 1})}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>Resumo:</strong> Sorteio com {newRaffle.total_numeros} números, 
+                      variando de {newRaffle.numero_minimo} a {newRaffle.numero_maximo}, 
+                      com {newRaffle.numeros_por_usuario} números por usuário.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex space-x-3 pt-4">
