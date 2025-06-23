@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trophy, Calendar, Users, Play, X, Link, Settings, Dice1, Globe, Edit, Hash, Award, Trash2 } from 'lucide-react';
-import { Sorteio, NumeroRifa, User, Premio } from '../../types';
+import { Plus, Trophy, Calendar, Users, Play, X, Link, Settings, Dice1, Globe, Edit, Hash, Award, Trash2, Crown, User } from 'lucide-react';
+import { Sorteio, NumeroRifa, User as UserType, Premio } from '../../types';
 import { formatDate } from '../../utils/raffle';
 
 const RaffleManagement: React.FC = () => {
@@ -8,6 +8,7 @@ const RaffleManagement: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState<Sorteio | null>(null);
   const [showResultModal, setShowResultModal] = useState<Sorteio | null>(null);
+  const [showWinnersModal, setShowWinnersModal] = useState<Sorteio | null>(null);
   const [resultType, setResultType] = useState<'manual' | 'auto' | 'federal'>('auto');
   const [manualNumbers, setManualNumbers] = useState('');
   const [newRaffle, setNewRaffle] = useState({
@@ -197,7 +198,7 @@ const RaffleManagement: React.FC = () => {
 
   const getRaffleStats = (sorteio: Sorteio) => {
     const numeros: NumeroRifa[] = JSON.parse(localStorage.getItem('numerosRifa') || '[]');
-    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+    const users: UserType[] = JSON.parse(localStorage.getItem('users') || '[]');
     
     const raffleNumbers = numeros.filter(n => n.id_sorteio === sorteio.id);
     const uniqueUsers = new Set(raffleNumbers.map(n => n.id_usuario));
@@ -206,6 +207,43 @@ const RaffleManagement: React.FC = () => {
       totalNumbers: raffleNumbers.length,
       participants: uniqueUsers.size
     };
+  };
+
+  const getWinnerDetails = (sorteio: Sorteio) => {
+    if (!sorteio.numeros_premiados || sorteio.numeros_premiados.length === 0) return [];
+
+    const numeros: NumeroRifa[] = JSON.parse(localStorage.getItem('numerosRifa') || '[]');
+    const users: UserType[] = JSON.parse(localStorage.getItem('users') || '[]');
+    
+    const winnerDetails = sorteio.numeros_premiados.map((numero, index) => {
+      const numeroRifa = numeros.find(n => n.numero_gerado === numero && n.id_sorteio === sorteio.id);
+      const user = numeroRifa ? users.find(u => u.id === numeroRifa.id_usuario) : null;
+      
+      // Determine which prize this number belongs to
+      let currentIndex = 0;
+      let prizeName = 'Prêmio Principal';
+      let isPrincipal = true;
+      
+      if (sorteio.premios) {
+        for (const premio of sorteio.premios.sort((a, b) => a.ordem - b.ordem)) {
+          if (index >= currentIndex && index < currentIndex + premio.quantidade_numeros) {
+            prizeName = premio.nome;
+            isPrincipal = premio.ordem === 1;
+            break;
+          }
+          currentIndex += premio.quantidade_numeros;
+        }
+      }
+      
+      return {
+        numero,
+        user,
+        prizeName,
+        isPrincipal
+      };
+    });
+
+    return winnerDetails;
   };
 
   return (
@@ -240,6 +278,7 @@ const RaffleManagement: React.FC = () => {
         ) : (
           sorteios.map((sorteio) => {
             const stats = getRaffleStats(sorteio);
+            const winnerDetails = getWinnerDetails(sorteio);
             return (
               <div
                 key={sorteio.id}
@@ -348,21 +387,30 @@ const RaffleManagement: React.FC = () => {
                           {sorteio.status === 'aberto' ? 'Em Andamento' : 'Finalizado'}
                         </span>
                       </div>
-                      {sorteio.numeros_premiados && (
+                      {winnerDetails.length > 0 && (
                         <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 sm:p-3 rounded border border-yellow-200 dark:border-yellow-700">
-                          <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 mb-1">Números Sorteados:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {sorteio.numeros_premiados.slice(0, 2).map((numero, i) => (
-                              <span key={i} className="px-1 py-0.5 bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 text-xs rounded">
-                                {numero}
-                              </span>
-                            ))}
-                            {sorteio.numeros_premiados.length > 2 && (
-                              <span className="text-xs text-yellow-600 dark:text-yellow-300">
-                                +{sorteio.numeros_premiados.length - 2}
-                              </span>
-                            )}
-                          </div>
+                          <button
+                            onClick={() => setShowWinnersModal(sorteio)}
+                            className="w-full text-left"
+                          >
+                            <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 mb-1">Ganhadores:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {winnerDetails.slice(0, 2).map((winner, i) => (
+                                <span key={i} className={`px-1 py-0.5 text-xs rounded ${
+                                  winner.isPrincipal
+                                    ? 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200'
+                                    : 'bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200'
+                                }`}>
+                                  {winner.numero}
+                                </span>
+                              ))}
+                              {winnerDetails.length > 2 && (
+                                <span className="text-xs text-yellow-600 dark:text-yellow-300">
+                                  +{winnerDetails.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -401,6 +449,16 @@ const RaffleManagement: React.FC = () => {
                           <span>Ver Vídeo</span>
                         </button>
                       )}
+
+                      {winnerDetails.length > 0 && (
+                        <button
+                          onClick={() => setShowWinnersModal(sorteio)}
+                          className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-yellow-600 dark:bg-yellow-500 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-yellow-700 dark:hover:bg-yellow-600 transition-colors text-xs sm:text-sm"
+                        >
+                          <Trophy className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span>Ver Ganhadores</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -409,6 +467,89 @@ const RaffleManagement: React.FC = () => {
           })
         )}
       </div>
+
+      {/* Winners Modal */}
+      {showWinnersModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-90vh overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Ganhadores - {showWinnersModal.nome}
+                </h3>
+                <button
+                  onClick={() => setShowWinnersModal(null)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {getWinnerDetails(showWinnersModal).map((winner, index) => (
+                  <div
+                    key={index}
+                    className={`p-4 rounded-lg border-2 ${
+                      winner.isPrincipal
+                        ? 'bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-yellow-400 dark:border-yellow-500'
+                        : 'bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-400 dark:border-purple-500'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className={`p-3 rounded-full ${
+                          winner.isPrincipal
+                            ? 'bg-yellow-200 dark:bg-yellow-800'
+                            : 'bg-purple-200 dark:bg-purple-800'
+                        }`}>
+                          {winner.isPrincipal ? (
+                            <Crown className={`w-6 h-6 ${
+                              winner.isPrincipal ? 'text-yellow-700 dark:text-yellow-200' : 'text-purple-700 dark:text-purple-200'
+                            }`} />
+                          ) : (
+                            <Award className="w-6 h-6 text-purple-700 dark:text-purple-200" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className={`text-lg font-bold ${
+                            winner.isPrincipal ? 'text-yellow-900 dark:text-yellow-100' : 'text-purple-900 dark:text-purple-100'
+                          }`}>
+                            {winner.prizeName}
+                          </h4>
+                          <p className={`text-sm ${
+                            winner.isPrincipal ? 'text-yellow-700 dark:text-yellow-300' : 'text-purple-700 dark:text-purple-300'
+                          }`}>
+                            Número sorteado: <span className="font-mono font-bold">{winner.numero}</span>
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        {winner.user ? (
+                          <div>
+                            <div className="flex items-center justify-end space-x-2 mb-1">
+                              <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {winner.user.nome}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">{winner.user.email}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{winner.user.cpf}</p>
+                          </div>
+                        ) : (
+                          <div className="text-gray-500 dark:text-gray-400">
+                            <p className="text-sm">Usuário não encontrado</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Raffle Modal */}
       {showCreateModal && (
@@ -472,7 +613,11 @@ const RaffleManagement: React.FC = () => {
                     {premios.map((premio, index) => (
                       <div key={premio.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
                         <div className="flex items-center space-x-2">
-                          <Award className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                          {index === 0 ? (
+                            <Crown className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                          ) : (
+                            <Award className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                          )}
                           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {index + 1}º
                           </span>

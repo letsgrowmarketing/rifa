@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Hash, Calendar, Trophy, Eye } from 'lucide-react';
+import { Hash, Calendar, Trophy, Eye, Award, Crown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { NumeroRifa, Sorteio, Comprovante } from '../../types';
 import { formatDate } from '../../utils/raffle';
@@ -46,9 +46,36 @@ const UserNumbers: React.FC = () => {
     }
   };
 
-  const isWinningNumber = (numero: string, sorteioId: string) => {
+  const getWinningInfo = (numero: string, sorteioId: string) => {
     const sorteio = sorteios.find(s => s.id === sorteioId);
-    return sorteio?.numeros_premiados?.includes(numero) || false;
+    if (!sorteio?.numeros_premiados?.includes(numero)) {
+      return null;
+    }
+
+    // Find which prize this number won
+    const numeroIndex = sorteio.numeros_premiados.indexOf(numero);
+    let currentIndex = 0;
+    
+    if (sorteio.premios) {
+      for (const premio of sorteio.premios.sort((a, b) => a.ordem - b.ordem)) {
+        if (numeroIndex >= currentIndex && numeroIndex < currentIndex + premio.quantidade_numeros) {
+          return {
+            isWinner: true,
+            prizeOrder: premio.ordem,
+            prizeName: premio.nome,
+            isPrincipal: premio.ordem === 1
+          };
+        }
+        currentIndex += premio.quantidade_numeros;
+      }
+    }
+
+    return {
+      isWinner: true,
+      prizeOrder: 1,
+      prizeName: 'Prêmio Principal',
+      isPrincipal: true
+    };
   };
 
   return (
@@ -121,25 +148,37 @@ const UserNumbers: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
           {filteredNumbers.map((numero) => {
             const status = getStatusBadge(numero.id_sorteio);
-            const isWinner = isWinningNumber(numero.numero_gerado, numero.id_sorteio);
+            const winningInfo = getWinningInfo(numero.numero_gerado, numero.id_sorteio);
             const sorteio = sorteios.find(s => s.id === numero.id_sorteio);
             
             return (
               <div
                 key={numero.id}
                 className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
-                  isWinner
-                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400 dark:border-yellow-600 shadow-lg'
+                  winningInfo?.isWinner
+                    ? winningInfo.isPrincipal
+                      ? 'bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/30 dark:to-amber-900/30 border-yellow-400 dark:border-yellow-500 shadow-lg ring-2 ring-yellow-300 dark:ring-yellow-600'
+                      : 'bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 border-purple-400 dark:border-purple-500 shadow-lg ring-2 ring-purple-300 dark:ring-purple-600'
                     : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 hover:shadow-md'
                 }`}
               >
                 <div className="text-center">
-                  {isWinner && (
+                  {winningInfo?.isWinner && (
                     <div className="mb-2">
-                      <Trophy className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mx-auto" />
+                      {winningInfo.isPrincipal ? (
+                        <Crown className="w-5 h-5 text-yellow-500 dark:text-yellow-400 mx-auto" />
+                      ) : (
+                        <Award className="w-5 h-5 text-purple-500 dark:text-purple-400 mx-auto" />
+                      )}
                     </div>
                   )}
-                  <div className={`text-lg font-bold ${isWinner ? 'text-yellow-700 dark:text-yellow-300' : 'text-gray-900 dark:text-white'}`}>
+                  <div className={`text-lg font-bold ${
+                    winningInfo?.isWinner 
+                      ? winningInfo.isPrincipal
+                        ? 'text-yellow-700 dark:text-yellow-300'
+                        : 'text-purple-700 dark:text-purple-300'
+                      : 'text-gray-900 dark:text-white'
+                  }`}>
                     {numero.numero_gerado}
                   </div>
                   <div className="mt-2">
@@ -156,9 +195,13 @@ const UserNumbers: React.FC = () => {
                       {sorteio.nome}
                     </div>
                   )}
-                  {isWinner && (
-                    <div className="mt-2 text-xs font-medium text-yellow-700 dark:text-yellow-300">
-                      🎉 GANHADOR!
+                  {winningInfo?.isWinner && (
+                    <div className={`mt-2 text-xs font-medium ${
+                      winningInfo.isPrincipal 
+                        ? 'text-yellow-700 dark:text-yellow-300'
+                        : 'text-purple-700 dark:text-purple-300'
+                    }`}>
+                      🎉 {winningInfo.prizeName}
                     </div>
                   )}
                 </div>

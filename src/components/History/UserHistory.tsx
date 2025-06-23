@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { History, Trophy, Play, Calendar, Hash, X } from 'lucide-react';
+import { History, Trophy, Play, Calendar, Hash, X, Crown, Award } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { NumeroRifa, Sorteio, HistoricoVencedor } from '../../types';
 import { formatDate } from '../../utils/raffle';
 
 const UserHistory: React.FC = () => {
   const { user } = useAuth();
-  const [history, setHistory] = useState<(Sorteio & { userNumbers: NumeroRifa[], isWinner: boolean })[]>([]);
+  const [history, setHistory] = useState<(Sorteio & { userNumbers: NumeroRifa[], winningNumbers: Array<{numero: string, prizeName: string, isPrincipal: boolean}> })[]>([]);
   const [showVideoModal, setShowVideoModal] = useState<Sorteio | null>(null);
 
   useEffect(() => {
@@ -18,14 +18,38 @@ const UserHistory: React.FC = () => {
       
       const userHistory = allSorteios.map(sorteio => {
         const numbersInRaffle = userNumbers.filter(n => n.id_sorteio === sorteio.id);
-        const isWinner = numbersInRaffle.some(n => 
-          sorteio.numeros_premiados?.includes(n.numero_gerado)
-        );
+        
+        // Find winning numbers with prize information
+        const winningNumbers = numbersInRaffle
+          .filter(n => sorteio.numeros_premiados?.includes(n.numero_gerado))
+          .map(n => {
+            const numeroIndex = sorteio.numeros_premiados!.indexOf(n.numero_gerado);
+            let currentIndex = 0;
+            
+            if (sorteio.premios) {
+              for (const premio of sorteio.premios.sort((a, b) => a.ordem - b.ordem)) {
+                if (numeroIndex >= currentIndex && numeroIndex < currentIndex + premio.quantidade_numeros) {
+                  return {
+                    numero: n.numero_gerado,
+                    prizeName: premio.nome,
+                    isPrincipal: premio.ordem === 1
+                  };
+                }
+                currentIndex += premio.quantidade_numeros;
+              }
+            }
+            
+            return {
+              numero: n.numero_gerado,
+              prizeName: 'Prêmio Principal',
+              isPrincipal: true
+            };
+          });
         
         return {
           ...sorteio,
           userNumbers: numbersInRaffle,
-          isWinner
+          winningNumbers
         };
       }).filter(h => h.userNumbers.length > 0);
 
@@ -73,7 +97,7 @@ const UserHistory: React.FC = () => {
           <div
             key={item.id}
             className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border-2 p-4 sm:p-6 transition-all ${
-              item.isWinner 
+              item.winningNumbers.length > 0
                 ? 'border-yellow-400 dark:border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' 
                 : item.status === 'aberto'
                 ? 'border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
@@ -84,13 +108,13 @@ const UserHistory: React.FC = () => {
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-3">
                   <div className={`p-2 rounded-lg ${
-                    item.isWinner 
+                    item.winningNumbers.length > 0
                       ? 'bg-yellow-200 dark:bg-yellow-800'
                       : item.status === 'aberto'
                       ? 'bg-blue-200 dark:bg-blue-800'
                       : 'bg-gray-200 dark:bg-gray-700'
                   }`}>
-                    {item.isWinner ? (
+                    {item.winningNumbers.length > 0 ? (
                       <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-700 dark:text-yellow-200" />
                     ) : (
                       <Hash className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300" />
@@ -98,7 +122,7 @@ const UserHistory: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className={`text-lg font-semibold truncate ${
-                      item.isWinner ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-900 dark:text-white'
+                      item.winningNumbers.length > 0 ? 'text-yellow-900 dark:text-yellow-100' : 'text-gray-900 dark:text-white'
                     }`}>
                       {item.nome}
                     </h3>
@@ -117,13 +141,15 @@ const UserHistory: React.FC = () => {
 
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 mb-4">
                   {item.userNumbers.map((numero) => {
-                    const isWinning = item.numeros_premiados?.includes(numero.numero_gerado);
+                    const winningInfo = item.winningNumbers.find(w => w.numero === numero.numero_gerado);
                     return (
                       <div
                         key={numero.id}
                         className={`text-center py-1 sm:py-2 px-1 rounded text-xs sm:text-sm font-medium ${
-                          isWinning
-                            ? 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 border-2 border-yellow-400 dark:border-yellow-600'
+                          winningInfo
+                            ? winningInfo.isPrincipal
+                              ? 'bg-gradient-to-br from-yellow-200 to-amber-200 dark:from-yellow-800 dark:to-amber-800 text-yellow-800 dark:text-yellow-200 border-2 border-yellow-400 dark:border-yellow-600 shadow-md'
+                              : 'bg-gradient-to-br from-purple-200 to-indigo-200 dark:from-purple-800 dark:to-indigo-800 text-purple-800 dark:text-purple-200 border-2 border-purple-400 dark:border-purple-600 shadow-md'
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                         }`}
                       >
@@ -143,12 +169,23 @@ const UserHistory: React.FC = () => {
                       {item.status === 'aberto' ? 'Em andamento' : 'Finalizado'}
                     </span>
                     
-                    {item.isWinner && (
-                      <span className="px-3 py-1 text-xs sm:text-sm font-medium bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 rounded-full flex items-center">
-                        <Trophy className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                        Ganhador!
+                    {item.winningNumbers.map((winning, index) => (
+                      <span 
+                        key={index}
+                        className={`px-3 py-1 text-xs sm:text-sm font-medium rounded-full flex items-center ${
+                          winning.isPrincipal
+                            ? 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200'
+                            : 'bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200'
+                        }`}
+                      >
+                        {winning.isPrincipal ? (
+                          <Crown className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                        ) : (
+                          <Award className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                        )}
+                        {winning.prizeName}
                       </span>
-                    )}
+                    ))}
                   </div>
 
                   {item.video_link && (
@@ -168,14 +205,37 @@ const UserHistory: React.FC = () => {
               <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Números sorteados:</p>
                 <div className="flex flex-wrap gap-2">
-                  {item.numeros_premiados.map((numero, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 text-sm font-medium rounded"
-                    >
-                      {numero}
-                    </span>
-                  ))}
+                  {item.numeros_premiados.map((numero, index) => {
+                    // Determine which prize this number belongs to
+                    let currentIndex = 0;
+                    let isPrincipal = true;
+                    let prizeName = 'Prêmio Principal';
+                    
+                    if (item.premios) {
+                      for (const premio of item.premios.sort((a, b) => a.ordem - b.ordem)) {
+                        if (index >= currentIndex && index < currentIndex + premio.quantidade_numeros) {
+                          isPrincipal = premio.ordem === 1;
+                          prizeName = premio.nome;
+                          break;
+                        }
+                        currentIndex += premio.quantidade_numeros;
+                      }
+                    }
+                    
+                    return (
+                      <span
+                        key={index}
+                        className={`px-2 py-1 text-sm font-medium rounded ${
+                          isPrincipal
+                            ? 'bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200'
+                            : 'bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200'
+                        }`}
+                        title={prizeName}
+                      >
+                        {numero}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             )}
