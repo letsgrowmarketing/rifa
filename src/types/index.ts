@@ -2,6 +2,7 @@ export interface User {
   id: string;
   nome: string;
   cpf: string;
+  telefone?: string;
   role: 'user' | 'admin';
   created_at: string;
   updated_at: string;

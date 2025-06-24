@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, User, CreditCard, Eye, EyeOff, Loader, Clock } from 'lucide-react';
+import { Mail, Lock, User, CreditCard, Eye, EyeOff, Loader, Clock, Phone } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { validateEmail, validateCPF, formatCPF } from '../../utils/auth';
+import { validateEmail, validateCPF, formatCPF, validatePhone, formatPhone, getCPFRegion } from '../../utils/auth';
 import { supabase } from '../../lib/supabase';
 
 interface RegisterFormProps {
@@ -13,6 +13,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
     nome: '',
     email: '',
     cpf: '',
+    telefone: '',
     senha: '',
     confirmarSenha: ''
   });
@@ -20,6 +21,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [cooldownTime, setCooldownTime] = useState(0);
+  const [cpfRegion, setCpfRegion] = useState<string>('');
   const [systemConfig, setSystemConfig] = useState({
     systemName: 'Sistema de Rifas',
     logoUrl: ''
@@ -73,6 +75,18 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const handleCPFChange = (value: string) => {
     const formatted = formatCPF(value);
     setFormData({...formData, cpf: formatted});
+    
+    // Show region info if CPF is complete
+    if (formatted.replace(/\D/g, '').length === 11) {
+      setCpfRegion(getCPFRegion(formatted));
+    } else {
+      setCpfRegion('');
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const formatted = formatPhone(value);
+    setFormData({...formData, telefone: formatted});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -117,6 +131,18 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       return;
     }
 
+    if (!formData.telefone) {
+      setError('Telefone é obrigatório');
+      setLoading(false);
+      return;
+    }
+
+    if (!validatePhone(formData.telefone)) {
+      setError('Telefone inválido. Use o formato (XX) 9XXXX-XXXX');
+      setLoading(false);
+      return;
+    }
+
     if (!formData.senha) {
       setError('Senha é obrigatória');
       setLoading(false);
@@ -139,6 +165,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       nome: formData.nome.trim(),
       email: formData.email,
       cpf: formData.cpf,
+      telefone: formData.telefone,
       senha: formData.senha
     });
 
@@ -252,6 +279,32 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               disabled={isFormDisabled}
             />
           </div>
+          {cpfRegion && (
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              Região: {cpfRegion}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Telefone
+          </label>
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+            <input
+              type="text"
+              value={formData.telefone}
+              onChange={(e) => handlePhoneChange(e.target.value)}
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+              placeholder="(11) 99999-9999"
+              maxLength={15}
+              disabled={isFormDisabled}
+            />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Formato: (XX) 9XXXX-XXXX
+          </p>
         </div>
 
         <div>

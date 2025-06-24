@@ -14,6 +14,7 @@ interface AuthContextType {
     nome: string;
     email: string;
     cpf: string;
+    telefone: string;
     senha: string;
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -107,6 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     nome: string;
     email: string;
     cpf: string;
+    telefone: string;
     senha: string;
   }) => {
     try {
@@ -119,6 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           data: {
             nome: userData.nome,
             cpf: userData.cpf,
+            telefone: userData.telefone,
           },
         },
       });

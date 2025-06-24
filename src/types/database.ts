@@ -15,6 +15,7 @@ export interface Database {
           auth_id: string | null
           nome: string
           cpf: string
+          telefone: string | null
           role: 'user' | 'admin'
           created_at: string
           updated_at: string
@@ -24,6 +25,7 @@ export interface Database {
           auth_id?: string | null
           nome: string
           cpf: string
+          telefone?: string | null
           role?: 'user' | 'admin'
           created_at?: string
           updated_at?: string
@@ -33,6 +35,7 @@ export interface Database {
           auth_id?: string | null
           nome?: string
           cpf?: string
+          telefone?: string | null
           role?: 'user' | 'admin'
           created_at?: string
           updated_at?: string

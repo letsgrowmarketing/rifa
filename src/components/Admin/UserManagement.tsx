@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Mail, CreditCard, Calendar, DollarSign, Hash } from 'lucide-react';
+import { Users, Search, Mail, CreditCard, Calendar, DollarSign, Hash, Phone } from 'lucide-react';
 import { User, Comprovante, NumeroRifa } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/raffle';
 
@@ -30,7 +30,8 @@ const UserManagement: React.FC = () => {
   const filteredUsers = users.filter(user => 
     user.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.cpf.includes(searchTerm)
+    user.cpf.includes(searchTerm) ||
+    (user.telefone && user.telefone.includes(searchTerm))
   );
 
   const getUserStats = (userId: string) => {
@@ -81,7 +82,7 @@ const UserManagement: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            placeholder="Buscar por nome, email ou CPF..."
+            placeholder="Buscar por nome, email, CPF ou telefone..."
           />
         </div>
       </div>
@@ -118,6 +119,12 @@ const UserManagement: React.FC = () => {
                   <CreditCard className="w-4 h-4 mr-2" />
                   <span>{user.cpf}</span>
                 </div>
+                {user.telefone && (
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                    <Phone className="w-4 h-4 mr-2" />
+                    <span>{user.telefone}</span>
+                  </div>
+                )}
                 <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                   <Calendar className="w-4 h-4 mr-2" />
                   <span>Cadastro: {formatDate(user.data_cadastro)}</span>
@@ -205,6 +212,12 @@ const UserManagement: React.FC = () => {
                           <label className="text-sm font-medium text-gray-500 dark:text-gray-400">CPF</label>
                           <p className="text-gray-900 dark:text-white">{details.user.cpf}</p>
                         </div>
+                        {details.user.telefone && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Telefone</label>
+                            <p className="text-gray-900 dark:text-white">{details.user.telefone}</p>
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-4">
                         <div>
