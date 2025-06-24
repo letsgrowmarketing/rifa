@@ -37,7 +37,7 @@ const VoucherUpload: React.FC = () => {
         .in('key', ['min_deposit_amount', 'block_value', 'numbers_per_block']);
 
       const config = data?.reduce((acc, item) => {
-        acc[item.key] = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+        acc[item.key] = item.value;
         return acc;
       }, {} as any) || {};
 

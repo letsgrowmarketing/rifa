@@ -28,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
         .in('key', ['system_name', 'logo_url']);
 
       const config = data?.reduce((acc, item) => {
-        acc[item.key] = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+        acc[item.key] = item.value;
         return acc;
       }, {} as any) || {};
 
