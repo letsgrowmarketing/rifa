@@ -12,14 +12,26 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    // Add error handling for token refresh failures
+    onAuthStateChange: (event, session) => {
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        console.log('Token refresh failed, session cleared');
+      }
+    }
   }
 });
 
 // Helper function to get current user profile
 export const getCurrentUserProfile = async () => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error('Error getting user:', userError);
+      return null;
+    }
+    
     if (!user) return null;
 
     const { data: profile, error } = await supabase
@@ -42,6 +54,11 @@ export const getCurrentUserProfile = async () => {
 
 // Helper function to check if user is admin
 export const isUserAdmin = async (): Promise<boolean> => {
-  const profile = await getCurrentUserProfile();
-  return profile?.role === 'admin';
+  try {
+    const profile = await getCurrentUserProfile();
+    return profile?.role === 'admin';
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    return false;
+  }
 };

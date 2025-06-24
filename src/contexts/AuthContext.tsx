@@ -39,11 +39,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const clearAuthState = () => {
+    setUser(null);
+    setSupabaseUser(null);
+  };
+
+  const handleAuthError = async (error: any) => {
+    console.error('Auth error:', error);
+    
+    // Check if it's a refresh token error
+    if (error?.message?.includes('refresh_token_not_found') || 
+        error?.message?.includes('Invalid Refresh Token') ||
+        error?.code === 'refresh_token_not_found') {
+      
+      console.log('Invalid refresh token detected, clearing session...');
+      
+      // Clear the invalid session
+      await supabase.auth.signOut();
+      clearAuthState();
+      
+      // Clear any stored tokens from localStorage
+      try {
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.startsWith('sb-') || key.includes('supabase')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.error('Error clearing localStorage:', e);
+      }
+    }
+  };
+
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          await handleAuthError(error);
+          setLoading(false);
+          return;
+        }
         
         if (session?.user) {
           setSupabaseUser(session.user);
@@ -51,7 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(profile);
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
+        await handleAuthError(error);
       } finally {
         setLoading(false);
       }
@@ -64,6 +103,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          // Token refresh failed, clear auth state
+          clearAuthState();
+          setLoading(false);
+          return;
+        }
+        
         if (session?.user) {
           setSupabaseUser(session.user);
           
@@ -72,11 +118,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
           
-          const profile = await getCurrentUserProfile();
-          setUser(profile);
+          try {
+            const profile = await getCurrentUserProfile();
+            setUser(profile);
+          } catch (error) {
+            console.error('Error getting user profile:', error);
+            await handleAuthError(error);
+          }
         } else {
-          setSupabaseUser(null);
-          setUser(null);
+          clearAuthState();
         }
         setLoading(false);
       }
@@ -140,7 +190,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+      clearAuthState();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout fails, clear local state
+      clearAuthState();
+    }
   };
 
   return (
