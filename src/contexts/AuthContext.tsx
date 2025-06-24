@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           // Wait a bit for the trigger to create the user profile
           if (event === 'SIGNED_UP') {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 2000));
           }
           
           try {
@@ -164,6 +164,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('Registering user:', userData.email);
       
+      // First, check if user already exists
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('cpf')
+        .eq('cpf', userData.cpf)
+        .single();
+
+      if (existingUser) {
+        return { success: false, error: 'CPF já cadastrado no sistema' };
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.senha,
@@ -178,7 +189,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) {
         console.error('Registration error:', error);
+        
+        // Handle specific error cases
+        if (error.message.includes('User already registered')) {
+          return { success: false, error: 'Email já cadastrado no sistema' };
+        }
+        
+        if (error.message.includes('over_email_send_rate_limit')) {
+          return { success: false, error: 'Muitas tentativas de cadastro. Aguarde alguns minutos antes de tentar novamente.' };
+        }
+        
         return { success: false, error: error.message };
+      }
+
+      // If signup was successful but user needs email confirmation
+      if (data.user && !data.session) {
+        return { success: false, error: 'Verifique seu email para confirmar a conta' };
       }
 
       console.log('Registration successful:', data);
