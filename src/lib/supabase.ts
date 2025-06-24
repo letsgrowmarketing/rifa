@@ -18,16 +18,26 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 
 // Helper function to get current user profile
 export const getCurrentUserProfile = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('auth_id', user.id)
-    .single();
+    const { data: profile, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('auth_id', user.id)
+      .single();
 
-  return profile;
+    if (error) {
+      console.error('Error fetching user profile:', error);
+      return null;
+    }
+
+    return profile;
+  } catch (error) {
+    console.error('Exception getting user profile:', error);
+    return null;
+  }
 };
 
 // Helper function to check if user is admin

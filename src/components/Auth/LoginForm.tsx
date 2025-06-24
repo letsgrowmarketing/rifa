@@ -179,14 +179,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
           </button>
         </p>
       </div>
-
-      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md">
-        <p className="text-sm text-blue-700 dark:text-blue-300">
-          <strong>Conta de teste Admin:</strong><br />
-          Email: admin@rifa.com<br />
-          Senha: admin123
-        </p>
-      </div>
     </div>
   );
 };

@@ -41,15 +41,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        setSupabaseUser(session.user);
-        const profile = await getCurrentUserProfile();
-        setUser(profile);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          const profile = await getCurrentUserProfile();
+          setUser(profile);
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     getInitialSession();
@@ -57,8 +61,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        
         if (session?.user) {
           setSupabaseUser(session.user);
+          
+          // Wait a bit for the trigger to create the user profile
+          if (event === 'SIGNED_UP') {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
           const profile = await getCurrentUserProfile();
           setUser(profile);
         } else {
@@ -80,11 +92,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (error) {
+        console.error('Login error:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true };
     } catch (error) {
+      console.error('Login exception:', error);
       return { success: false, error: 'Erro inesperado ao fazer login' };
     }
   };
@@ -96,6 +110,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     senha: string;
   }) => {
     try {
+      console.log('Registering user:', userData.email);
+      
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.senha,
@@ -108,11 +124,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (error) {
+        console.error('Registration error:', error);
         return { success: false, error: error.message };
       }
 
+      console.log('Registration successful:', data);
       return { success: true };
     } catch (error) {
+      console.error('Registration exception:', error);
       return { success: false, error: 'Erro inesperado ao criar conta' };
     }
   };
