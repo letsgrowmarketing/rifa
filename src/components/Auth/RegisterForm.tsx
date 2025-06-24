@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, User, CreditCard, Eye, EyeOff, Loader } from 'lucide-react';
+import { Mail, Lock, User, CreditCard, Eye, EyeOff, Loader, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail, validateCPF, formatCPF } from '../../utils/auth';
 import { supabase } from '../../lib/supabase';
@@ -19,6 +19,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(0);
   const [systemConfig, setSystemConfig] = useState({
     systemName: 'Sistema de Rifas',
     logoUrl: ''
@@ -28,6 +29,25 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
   useEffect(() => {
     loadSystemConfig();
   }, []);
+
+  // Cooldown timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (cooldownTime > 0) {
+      interval = setInterval(() => {
+        setCooldownTime((prev) => {
+          if (prev <= 1) {
+            setError('');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [cooldownTime]);
 
   const loadSystemConfig = async () => {
     try {
@@ -59,6 +79,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    // Check if we're in cooldown period
+    if (cooldownTime > 0) {
+      setLoading(false);
+      return;
+    }
 
     // Validation
     if (!formData.nome.trim()) {
@@ -117,11 +143,21 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
     });
 
     if (!result.success) {
-      setError(result.error || 'Erro ao criar conta');
+      const errorMessage = result.error || 'Erro ao criar conta';
+      
+      // Check for rate limit error
+      if (errorMessage.includes('over_email_send_rate_limit') || errorMessage.includes('rate limit')) {
+        setCooldownTime(40); // 40 seconds cooldown as specified by Supabase
+        setError('Muitas tentativas de cadastro. Aguarde 40 segundos antes de tentar novamente.');
+      } else {
+        setError(errorMessage);
+      }
     }
 
     setLoading(false);
   };
+
+  const isFormDisabled = loading || cooldownTime > 0;
 
   return (
     <div className="w-full max-w-md">
@@ -145,8 +181,24 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md p-3">
-            <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+          <div className={`border rounded-md p-3 ${
+            cooldownTime > 0 
+              ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700' 
+              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'
+          }`}>
+            <div className="flex items-center">
+              {cooldownTime > 0 && <Clock className="w-4 h-4 mr-2 text-yellow-600 dark:text-yellow-400" />}
+              <p className={`text-sm ${
+                cooldownTime > 0 
+                  ? 'text-yellow-600 dark:text-yellow-400' 
+                  : 'text-red-600 dark:text-red-400'
+              }`}>
+                {error}
+                {cooldownTime > 0 && (
+                  <span className="font-medium ml-1">({cooldownTime}s)</span>
+                )}
+              </p>
+            </div>
           </div>
         )}
 
@@ -160,9 +212,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               type="text"
               value={formData.nome}
               onChange={(e) => setFormData({...formData, nome: e.target.value})}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
               placeholder="Seu nome completo"
-              disabled={loading}
+              disabled={isFormDisabled}
             />
           </div>
         </div>
@@ -177,9 +229,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
               placeholder="seu@email.com"
-              disabled={loading}
+              disabled={isFormDisabled}
             />
           </div>
         </div>
@@ -194,10 +246,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               type="text"
               value={formData.cpf}
               onChange={(e) => handleCPFChange(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
               placeholder="000.000.000-00"
               maxLength={14}
-              disabled={loading}
+              disabled={isFormDisabled}
             />
           </div>
         </div>
@@ -212,15 +264,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               type={showPassword ? 'text' : 'password'}
               value={formData.senha}
               onChange={(e) => setFormData({...formData, senha: e.target.value})}
-              className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
               placeholder="••••••••"
-              disabled={loading}
+              disabled={isFormDisabled}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-              disabled={loading}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+              disabled={isFormDisabled}
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
@@ -237,22 +289,27 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
               type={showPassword ? 'text' : 'password'}
               value={formData.confirmarSenha}
               onChange={(e) => setFormData({...formData, confirmarSenha: e.target.value})}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
               placeholder="••••••••"
-              disabled={loading}
+              disabled={isFormDisabled}
             />
           </div>
         </div>
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={isFormDisabled}
           className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
         >
           {loading ? (
             <>
               <Loader className="w-5 h-5 mr-2 animate-spin" />
               Criando conta...
+            </>
+          ) : cooldownTime > 0 ? (
+            <>
+              <Clock className="w-5 h-5 mr-2" />
+              Aguarde {cooldownTime}s
             </>
           ) : (
             'Criar conta'
@@ -265,8 +322,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
           Já tem uma conta?{' '}
           <button
             onClick={onToggleMode}
-            className="text-green-600 hover:text-green-700 font-medium"
-            disabled={loading}
+            className="text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
+            disabled={isFormDisabled}
           >
             Entrar
           </button>
