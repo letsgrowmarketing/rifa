@@ -174,8 +174,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       
       // Check for rate limit error
       if (errorMessage.includes('over_email_send_rate_limit') || errorMessage.includes('rate limit')) {
-        setCooldownTime(40); // 40 seconds cooldown as specified by Supabase
-        setError('Muitas tentativas de cadastro. Aguarde 40 segundos antes de tentar novamente.');
+        setCooldownTime(60); // 60 seconds cooldown
+        setError('Muitas tentativas de cadastro. Aguarde 60 segundos antes de tentar novamente.');
       } else {
         setError(errorMessage);
       }
