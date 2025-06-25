@@ -44,34 +44,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setSupabaseUser(null);
   };
 
-  const handleAuthError = async (error: any) => {
-    console.error('Auth error:', error);
-    
-    // Check if it's a refresh token error
-    if (error?.message?.includes('refresh_token_not_found') || 
-        error?.message?.includes('Invalid Refresh Token') ||
-        error?.code === 'refresh_token_not_found') {
-      
-      console.log('Invalid refresh token detected, clearing session...');
-      
-      // Clear the invalid session
-      await supabase.auth.signOut();
-      clearAuthState();
-      
-      // Clear any stored tokens from localStorage
-      try {
-        const keys = Object.keys(localStorage);
-        keys.forEach(key => {
-          if (key.startsWith('sb-') || key.includes('supabase')) {
-            localStorage.removeItem(key);
-          }
-        });
-      } catch (e) {
-        console.error('Error clearing localStorage:', e);
-      }
-    }
-  };
-
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
@@ -79,18 +51,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          await handleAuthError(error);
+          console.error('Error getting session:', error);
           setLoading(false);
           return;
         }
         
         if (session?.user) {
           setSupabaseUser(session.user);
-          const profile = await getCurrentUserProfile();
-          setUser(profile);
+          
+          // Wait a bit for the trigger to create the profile
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          try {
+            const profile = await getCurrentUserProfile();
+            setUser(profile);
+          } catch (error) {
+            console.error('Error getting user profile:', error);
+          }
         }
       } catch (error) {
-        await handleAuthError(error);
+        console.error('Error in getInitialSession:', error);
       } finally {
         setLoading(false);
       }
@@ -103,18 +83,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         
-        if (event === 'TOKEN_REFRESHED' && !session) {
-          // Token refresh failed, clear auth state
-          clearAuthState();
-          setLoading(false);
-          return;
-        }
-        
         if (session?.user) {
           setSupabaseUser(session.user);
           
-          // Wait a bit for the trigger to create the user profile
-          if (event === 'SIGNED_UP') {
+          // Wait for profile creation on signup
+          if (event === 'SIGNED_UP' || event === 'SIGNED_IN') {
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
           
@@ -123,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser(profile);
           } catch (error) {
             console.error('Error getting user profile:', error);
-            await handleAuthError(error);
+            setUser(null);
           }
         } else {
           clearAuthState();
@@ -137,6 +110,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
+      setLoading(true);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -147,10 +122,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { success: false, error: error.message };
       }
 
+      if (data.user) {
+        setSupabaseUser(data.user);
+        
+        try {
+          const profile = await getCurrentUserProfile();
+          setUser(profile);
+        } catch (profileError) {
+          console.error('Error getting profile after login:', profileError);
+        }
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Login exception:', error);
       return { success: false, error: 'Erro inesperado ao fazer login' };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -162,17 +150,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     senha: string;
   }) => {
     try {
+      setLoading(true);
+      
       console.log('Registering user:', userData.email);
       
-      // First, check if user already exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('cpf')
-        .eq('cpf', userData.cpf)
-        .single();
+      // Check if user already exists by CPF
+      try {
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('cpf')
+          .eq('cpf', userData.cpf)
+          .maybeSingle();
 
-      if (existingUser) {
-        return { success: false, error: 'CPF já cadastrado no sistema' };
+        if (existingUser) {
+          return { success: false, error: 'CPF já cadastrado no sistema' };
+        }
+      } catch (error) {
+        // Ignore error if table doesn't exist or no permission
+        console.log('Could not check existing user, proceeding with signup');
       }
 
       const { data, error } = await supabase.auth.signUp({
@@ -190,7 +185,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error) {
         console.error('Registration error:', error);
         
-        // Handle specific error cases
         if (error.message.includes('User already registered')) {
           return { success: false, error: 'Email já cadastrado no sistema' };
         }
@@ -202,9 +196,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { success: false, error: error.message };
       }
 
-      // If signup was successful but user needs email confirmation
-      if (data.user && !data.session) {
-        return { success: false, error: 'Verifique seu email para confirmar a conta' };
+      if (data.user) {
+        setSupabaseUser(data.user);
+        
+        // Wait for profile creation
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        try {
+          const profile = await getCurrentUserProfile();
+          setUser(profile);
+        } catch (profileError) {
+          console.error('Error getting profile after registration:', profileError);
+        }
       }
 
       console.log('Registration successful:', data);
@@ -212,6 +215,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Registration exception:', error);
       return { success: false, error: 'Erro inesperado ao criar conta' };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -221,7 +226,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       clearAuthState();
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if logout fails, clear local state
       clearAuthState();
     }
   };
