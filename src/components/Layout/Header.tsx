@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { LogOut, User, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { supabase } from '../../lib/supabase';
 
 interface HeaderProps {
   title: string;
@@ -20,28 +19,15 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
     loadSystemConfig();
   }, []);
 
-  const loadSystemConfig = async () => {
-    try {
-      const { data } = await supabase
-        .from('system_config')
-        .select('key, value')
-        .in('key', ['system_name', 'logo_url']);
+  const loadSystemConfig = () => {
+    const config = JSON.parse(localStorage.getItem('systemConfig') || '{}');
+    setSystemConfig({
+      systemName: config.systemName || 'Sistema de Rifas',
+      logoUrl: config.logoUrl || ''
+    });
 
-      const config = data?.reduce((acc, item) => {
-        acc[item.key] = item.value;
-        return acc;
-      }, {} as any) || {};
-
-      setSystemConfig({
-        systemName: config.system_name || 'Sistema de Rifas',
-        logoUrl: config.logo_url || ''
-      });
-
-      // Update page title
-      document.title = config.system_name || 'Sistema de Rifas';
-    } catch (error) {
-      console.error('Error loading system config:', error);
-    }
+    // Update page title
+    document.title = config.systemName || 'Sistema de Rifas';
   };
 
   return (
