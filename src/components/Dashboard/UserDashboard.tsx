@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Comprovante, NumeroRifa, Sorteio } from '../../types';
 import DashboardCard from './DashboardCard';
 import { formatCurrency } from '../../utils/raffle';
+import { supabase } from '../../lib/supabase';
 
 interface UserDashboardProps {
   onNavigate: (page: string) => void;
@@ -26,34 +27,48 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ onNavigate }) => {
     }
   }, [user?.id]);
 
-  const loadStats = () => {
+  const loadStats = async () => {
     if (!user) return;
 
-    // Load comprovantes
-    const comprovantes: Comprovante[] = JSON.parse(localStorage.getItem('comprovantes') || '[]');
-    const userComprovantes = comprovantes.filter(c => c.id_usuario === user.id);
+    try {
+      // Load comprovantes
+      const { data: comprovantes } = await supabase
+        .from('comprovantes')
+        .select('*')
+        .eq('user_id', user.id);
 
-    // Load numeros
-    const numeros: NumeroRifa[] = JSON.parse(localStorage.getItem('numerosRifa') || '[]');
-    const userNumeros = numeros.filter(n => n.id_usuario === user.id);
+      // Load numeros
+      const { data: numeros } = await supabase
+        .from('numeros_rifa')
+        .select('*')
+        .eq('user_id', user.id);
 
-    // Load current raffle
-    const sorteios: Sorteio[] = JSON.parse(localStorage.getItem('sorteios') || '[]');
-    const current = sorteios.find(s => s.status === 'aberto');
+      // Load current raffle
+      const { data: sorteios } = await supabase
+        .from('sorteios')
+        .select('*')
+        .eq('status', 'aberto')
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-    const pendentes = userComprovantes.filter(c => c.status === 'pendente').length;
-    const valorTotal = userComprovantes
-      .filter(c => c.status === 'aprovado')
-      .reduce((sum, c) => sum + c.valor_informado, 0);
+      const userComprovantes = comprovantes || [];
+      const userNumeros = numeros || [];
+      const pendentes = userComprovantes.filter(c => c.status === 'pendente').length;
+      const valorTotal = userComprovantes
+        .filter(c => c.status === 'aprovado')
+        .reduce((sum, c) => sum + c.valor_informado, 0);
 
-    setStats({
-      comprovantes: userComprovantes.length,
-      numeros: userNumeros.length,
-      pendentes,
-      valorTotal
-    });
+      setStats({
+        comprovantes: userComprovantes.length,
+        numeros: userNumeros.length,
+        pendentes,
+        valorTotal
+      });
 
-    setCurrentRaffle(current || null);
+      setCurrentRaffle(sorteios?.[0] || null);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
   };
 
   const extractVideoUrl = (iframe: string): string => {

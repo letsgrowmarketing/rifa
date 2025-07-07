@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, CreditCard, Eye, EyeOff, Loader, Clock, Phone } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail, validateCPF, formatCPF, validatePhone, formatPhone, getCPFRegion } from '../../utils/auth';
+import { supabase } from '../../lib/supabase';
 
 interface RegisterFormProps {
   onToggleMode: () => void;
@@ -50,12 +51,25 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
     };
   }, [cooldownTime]);
 
-  const loadSystemConfig = () => {
-    const config = JSON.parse(localStorage.getItem('systemConfig') || '{}');
-    setSystemConfig({
-      systemName: config.systemName || 'Sistema de Rifas',
-      logoUrl: config.logoUrl || ''
-    });
+  const loadSystemConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from('system_config')
+        .select('key, value')
+        .in('key', ['system_name', 'logo_url']);
+
+      const config = data?.reduce((acc, item) => {
+        acc[item.key] = item.value;
+        return acc;
+      }, {} as any) || {};
+
+      setSystemConfig({
+        systemName: config.system_name || 'Sistema de Rifas',
+        logoUrl: config.logo_url || ''
+      });
+    } catch (error) {
+      console.error('Error loading system config:', error);
+    }
   };
 
   const handleCPFChange = (value: string) => {
@@ -159,7 +173,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onToggleMode }) => {
       const errorMessage = result.error || 'Erro ao criar conta';
       
       // Check for rate limit error
-      if (errorMessage.includes('rate limit')) {
+      if (errorMessage.includes('over_email_send_rate_limit') || errorMessage.includes('rate limit')) {
         setCooldownTime(60); // 60 seconds cooldown
         setError('Muitas tentativas de cadastro. Aguarde 60 segundos antes de tentar novamente.');
       } else {

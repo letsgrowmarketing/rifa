@@ -1,9 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '../types';
-import { hashPassword, verifyPassword } from '../utils/auth';
+import { User as SupabaseUser } from '@supabase/supabase-js';
+import { supabase, getCurrentUserProfile } from '../lib/supabase';
+import { Database } from '../types/database';
+
+type UserProfile = Database['public']['Tables']['users']['Row'];
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
+  supabaseUser: SupabaseUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (userData: {
@@ -31,58 +35,108 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const clearAuthState = () => {
+    setUser(null);
+    setSupabaseUser(null);
+  };
+
   useEffect(() => {
-    // Check for existing session
-    const checkSession = () => {
-      const currentUser = localStorage.getItem('currentUser');
-      if (currentUser) {
-        try {
-          const userData = JSON.parse(currentUser);
-          setUser(userData);
-        } catch (error) {
-          console.error('Error parsing user data:', error);
-          localStorage.removeItem('currentUser');
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setLoading(false);
+          return;
         }
+        
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          
+          // Wait a bit for the trigger to create the profile
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          try {
+            const profile = await getCurrentUserProfile();
+            setUser(profile);
+          } catch (error) {
+            console.error('Error getting user profile:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error in getInitialSession:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    checkSession();
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          
+          // Wait for profile creation on signup
+          if (event === 'SIGNED_UP' || event === 'SIGNED_IN') {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          
+          try {
+            const profile = await getCurrentUserProfile();
+            setUser(profile);
+          } catch (error) {
+            console.error('Error getting user profile:', error);
+            setUser(null);
+          }
+        } else {
+          clearAuthState();
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
       
-      // Get users from localStorage
-      const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
-      
-      // Find user by email
-      const foundUser = users.find(u => u.email === email);
-      
-      if (!foundUser) {
-        return { success: false, error: 'Email não encontrado' };
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Login error:', error);
+        return { success: false, error: error.message };
       }
-      
-      // Verify password
-      if (!verifyPassword(password, foundUser.senha_hash)) {
-        return { success: false, error: 'Senha incorreta' };
+
+      if (data.user) {
+        setSupabaseUser(data.user);
+        
+        try {
+          const profile = await getCurrentUserProfile();
+          setUser(profile);
+        } catch (profileError) {
+          console.error('Error getting profile after login:', profileError);
+        }
       }
-      
-      // Set current user
-      const userWithoutPassword = { ...foundUser };
-      delete (userWithoutPassword as any).senha_hash;
-      
-      setUser(userWithoutPassword);
-      localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
-      
+
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: 'Erro interno do sistema' };
+      console.error('Login exception:', error);
+      return { success: false, error: 'Erro inesperado ao fazer login' };
     } finally {
       setLoading(false);
     }
@@ -98,60 +152,88 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       
-      // Get existing users
-      const users: User[] = JSON.parse(localStorage.getItem('users') || '[]');
+      console.log('Registering user:', userData.email);
       
-      // Check if email already exists
-      if (users.some(u => u.email === userData.email)) {
-        return { success: false, error: 'Email já cadastrado' };
+      // Check if user already exists by CPF
+      try {
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('cpf')
+          .eq('cpf', userData.cpf)
+          .maybeSingle();
+
+        if (existingUser) {
+          return { success: false, error: 'CPF já cadastrado no sistema' };
+        }
+      } catch (error) {
+        // Ignore error if table doesn't exist or no permission
+        console.log('Could not check existing user, proceeding with signup');
       }
-      
-      // Check if CPF already exists
-      if (users.some(u => u.cpf === userData.cpf)) {
-        return { success: false, error: 'CPF já cadastrado' };
-      }
-      
-      // Create new user
-      const newUser: User & { senha_hash: string } = {
-        id: Date.now().toString(),
-        nome: userData.nome,
+
+      const { data, error } = await supabase.auth.signUp({
         email: userData.email,
-        cpf: userData.cpf,
-        telefone: userData.telefone,
-        role: 'user',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        senha_hash: hashPassword(userData.senha)
-      };
-      
-      // Add to users array
-      users.push(newUser);
-      localStorage.setItem('users', JSON.stringify(users));
-      
-      // Set current user (without password)
-      const userWithoutPassword = { ...newUser };
-      delete (userWithoutPassword as any).senha_hash;
-      
-      setUser(userWithoutPassword);
-      localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
-      
+        password: userData.senha,
+        options: {
+          data: {
+            nome: userData.nome,
+            cpf: userData.cpf,
+            telefone: userData.telefone,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Registration error:', error);
+        
+        if (error.message.includes('User already registered')) {
+          return { success: false, error: 'Email já cadastrado no sistema' };
+        }
+        
+        if (error.message.includes('over_email_send_rate_limit')) {
+          return { success: false, error: 'Muitas tentativas de cadastro. Aguarde alguns minutos antes de tentar novamente.' };
+        }
+        
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        setSupabaseUser(data.user);
+        
+        // Wait for profile creation
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        try {
+          const profile = await getCurrentUserProfile();
+          setUser(profile);
+        } catch (profileError) {
+          console.error('Error getting profile after registration:', profileError);
+        }
+      }
+
+      console.log('Registration successful:', data);
       return { success: true };
     } catch (error) {
-      console.error('Registration error:', error);
-      return { success: false, error: 'Erro interno do sistema' };
+      console.error('Registration exception:', error);
+      return { success: false, error: 'Erro inesperado ao criar conta' };
     } finally {
       setLoading(false);
     }
   };
 
   const logout = async () => {
-    setUser(null);
-    localStorage.removeItem('currentUser');
+    try {
+      await supabase.auth.signOut();
+      clearAuthState();
+    } catch (error) {
+      console.error('Logout error:', error);
+      clearAuthState();
+    }
   };
 
   return (
     <AuthContext.Provider value={{
       user,
+      supabaseUser,
       loading,
       login,
       register,

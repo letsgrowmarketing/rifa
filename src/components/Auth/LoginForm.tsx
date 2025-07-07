@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, Loader } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail } from '../../utils/auth';
+import { supabase } from '../../lib/supabase';
 
 interface LoginFormProps {
   onToggleMode: () => void;
@@ -23,63 +24,29 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
 
   useEffect(() => {
     loadSystemConfig();
-    initializeDefaultUsers();
   }, []);
 
-  const loadSystemConfig = () => {
-    const config = JSON.parse(localStorage.getItem('systemConfig') || '{}');
-    setSystemConfig({
-      systemName: config.systemName || 'Sistema de Rifas',
-      logoUrl: config.logoUrl || ''
-    });
+  const loadSystemConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from('system_config')
+        .select('key, value')
+        .in('key', ['system_name', 'logo_url']);
 
-    // Update page title
-    document.title = config.systemName || 'Sistema de Rifas';
-  };
+      const config = data?.reduce((acc, item) => {
+        acc[item.key] = item.value;
+        return acc;
+      }, {} as any) || {};
 
-  const initializeDefaultUsers = () => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    
-    // Check if admin users already exist
-    const adminExists = users.some((u: any) => u.email === 'admin@rifa.com');
-    const supportExists = users.some((u: any) => u.email === 'suportefaturebet@gmail.com');
-    
-    if (!adminExists || !supportExists) {
-      const defaultUsers = [];
-      
-      if (!adminExists) {
-        defaultUsers.push({
-          id: 'admin-1',
-          nome: 'Administrador',
-          email: 'admin@rifa.com',
-          cpf: '000.000.000-01',
-          telefone: '',
-          role: 'admin',
-          isAdmin: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          data_cadastro: new Date().toISOString(),
-          senha_hash: 'YWRtaW4xMjNzYWx0' // admin123 hashed
-        });
-      }
-      
-      if (!supportExists) {
-        defaultUsers.push({
-          id: 'admin-2',
-          nome: 'Suporte FatureBet',
-          email: 'suportefaturebet@gmail.com',
-          cpf: '000.000.000-02',
-          telefone: '',
-          role: 'admin',
-          isAdmin: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          data_cadastro: new Date().toISOString(),
-          senha_hash: 'MGwwOHhmMU5idWkhT1ZzYWx0' // 0l08xf1Nbui!OV hashed
-        });
-      }
-      
-      localStorage.setItem('users', JSON.stringify([...users, ...defaultUsers]));
+      setSystemConfig({
+        systemName: config.system_name || 'Sistema de Rifas',
+        logoUrl: config.logo_url || ''
+      });
+
+      // Update page title
+      document.title = config.system_name || 'Sistema de Rifas';
+    } catch (error) {
+      console.error('Error loading system config:', error);
     }
   };
 
@@ -211,15 +178,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onToggleMode }) => {
             Criar conta
           </button>
         </p>
-      </div>
-
-      {/* Demo credentials info */}
-      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Contas de Demonstração:</h4>
-        <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-          <p><strong>Admin:</strong> admin@rifa.com / admin123</p>
-          <p><strong>Suporte:</strong> suportefaturebet@gmail.com / 0l08xf1Nbui!OV</p>
-        </div>
       </div>
     </div>
   );

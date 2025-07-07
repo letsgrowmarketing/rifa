@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Image, DollarSign, AlertCircle, CheckCircle, Clock, Ticket, Loader } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { simulateAIValidation, formatCurrency, generateRaffleNumbers } from '../../utils/raffle';
-import { Comprovante, NumeroRifa, Sorteio, Cupom } from '../../types';
+import { simulateAIValidation, formatCurrency } from '../../utils/raffle';
+import { supabase } from '../../lib/supabase';
 
 const VoucherUpload: React.FC = () => {
   const { user } = useAuth();
@@ -21,7 +21,7 @@ const VoucherUpload: React.FC = () => {
   });
   const [cupomValidation, setCupomValidation] = useState<{
     valid: boolean;
-    cupom?: Cupom;
+    cupom?: any;
     message: string;
   } | null>(null);
 
@@ -29,58 +29,79 @@ const VoucherUpload: React.FC = () => {
     loadSystemConfig();
   }, []);
 
-  const loadSystemConfig = () => {
-    const config = JSON.parse(localStorage.getItem('systemConfig') || '{}');
-    setSystemConfig({
-      minDepositAmount: config.minDepositAmount || 100,
-      blockValue: config.blockValue || 100,
-      numbersPerBlock: config.numbersPerBlock || 10
-    });
+  const loadSystemConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from('system_config')
+        .select('key, value')
+        .in('key', ['min_deposit_amount', 'block_value', 'numbers_per_block']);
+
+      const config = data?.reduce((acc, item) => {
+        acc[item.key] = item.value;
+        return acc;
+      }, {} as any) || {};
+
+      setSystemConfig({
+        minDepositAmount: config.min_deposit_amount || 100,
+        blockValue: config.block_value || 100,
+        numbersPerBlock: config.numbers_per_block || 10
+      });
+    } catch (error) {
+      console.error('Error loading system config:', error);
+    }
   };
 
-  const validateCoupon = (codigo: string) => {
+  const validateCoupon = async (codigo: string) => {
     if (!codigo.trim()) {
       setCupomValidation(null);
       return;
     }
 
-    const cupons: Cupom[] = JSON.parse(localStorage.getItem('cupons') || '[]');
-    const cupom = cupons.find(c => 
-      c.codigo.toUpperCase() === codigo.toUpperCase() && 
-      c.ativo
-    );
+    try {
+      const { data: cupom } = await supabase
+        .from('cupons')
+        .select('*')
+        .eq('codigo', codigo.toUpperCase())
+        .eq('ativo', true)
+        .single();
 
-    if (!cupom) {
+      if (!cupom) {
+        setCupomValidation({
+          valid: false,
+          message: 'Cupom não encontrado'
+        });
+        return;
+      }
+
+      if (cupom.data_expiracao && new Date(cupom.data_expiracao) < new Date()) {
+        setCupomValidation({
+          valid: false,
+          message: 'Cupom expirado'
+        });
+        return;
+      }
+
+      if (cupom.uso_maximo && cupom.uso_atual >= cupom.uso_maximo) {
+        setCupomValidation({
+          valid: false,
+          message: 'Cupom esgotado'
+        });
+        return;
+      }
+
+      setCupomValidation({
+        valid: true,
+        cupom,
+        message: cupom.tipo === 'quantidade' 
+          ? `+${cupom.valor} números extras`
+          : `${cupom.valor}% de desconto`
+      });
+    } catch (error) {
       setCupomValidation({
         valid: false,
-        message: 'Cupom não encontrado'
+        message: 'Erro ao validar cupom'
       });
-      return;
     }
-
-    if (cupom.data_expiracao && new Date(cupom.data_expiracao) < new Date()) {
-      setCupomValidation({
-        valid: false,
-        message: 'Cupom expirado'
-      });
-      return;
-    }
-
-    if (cupom.uso_maximo && cupom.uso_atual >= cupom.uso_maximo) {
-      setCupomValidation({
-        valid: false,
-        message: 'Cupom esgotado'
-      });
-      return;
-    }
-
-    setCupomValidation({
-      valid: true,
-      cupom,
-      message: cupom.tipo === 'quantidade' 
-        ? `+${cupom.valor} números extras`
-        : `${cupom.valor}% de desconto`
-    });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,11 +143,10 @@ const VoucherUpload: React.FC = () => {
         }
 
         // Update coupon usage
-        const cupons: Cupom[] = JSON.parse(localStorage.getItem('cupons') || '[]');
-        const updatedCupons = cupons.map(c => 
-          c.id === cupom.id ? { ...c, uso_atual: c.uso_atual + 1 } : c
-        );
-        localStorage.setItem('cupons', JSON.stringify(updatedCupons));
+        await supabase
+          .from('cupons')
+          .update({ uso_atual: cupom.uso_atual + 1 })
+          .eq('id', cupom.id);
       }
       
       const reader = new FileReader();
@@ -136,52 +156,48 @@ const VoucherUpload: React.FC = () => {
         setMessage({ type: 'info', text: 'Validando comprovante com IA...' });
         const validation = await simulateAIValidation(valor, base64);
         
-        // Create comprovante
-        const comprovante: Comprovante = {
-          id: Date.now().toString(),
-          id_usuario: user.id,
-          valor_informado: parseFloat(formData.valor),
-          valor_lido: validation.valor_lido,
-          imagem_comprovante: base64,
-          status: validation.aprovado ? 'aprovado' : 'pendente',
-          data_envio: new Date().toISOString(),
-          cupom_usado: cupomUsado || undefined,
-          desconto_aplicado: descontoAplicado > 0 ? descontoAplicado : undefined,
-          usuario_nome: user.nome
-        };
+        // Insert comprovante
+        const { data: comprovante, error: comprovanteError } = await supabase
+          .from('comprovantes')
+          .insert({
+            user_id: user.id,
+            valor_informado: parseFloat(formData.valor),
+            valor_lido: validation.valor_lido,
+            imagem_comprovante: base64,
+            status: validation.aprovado ? 'aprovado' : 'pendente',
+            cupom_usado: cupomUsado || null,
+            desconto_aplicado: descontoAplicado > 0 ? descontoAplicado : null
+          })
+          .select()
+          .single();
 
-        // Save comprovante
-        const comprovantes: Comprovante[] = JSON.parse(localStorage.getItem('comprovantes') || '[]');
-        comprovantes.push(comprovante);
-        localStorage.setItem('comprovantes', JSON.stringify(comprovantes));
+        if (comprovanteError) {
+          throw comprovanteError;
+        }
         
         if (validation.aprovado) {
           // Get current raffle
-          const sorteios: Sorteio[] = JSON.parse(localStorage.getItem('sorteios') || '[]');
-          const currentRaffle = sorteios.find(s => s.status === 'aberto');
+          const { data: currentRaffle } = await supabase
+            .from('sorteios')
+            .select('*')
+            .eq('status', 'aberto')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
           
           if (currentRaffle) {
-            // Generate numbers
-            const numbers = generateRaffleNumbers(valor, currentRaffle.configuracao);
-            
-            // Add bonus numbers
-            for (let i = 0; i < bonusNumbers; i++) {
-              const bonusNumber = Math.floor(10000 + Math.random() * 90000).toString();
-              if (!numbers.includes(bonusNumber)) {
-                numbers.push(bonusNumber);
-              }
+            // Generate numbers using database function
+            const { data: numbersGenerated, error: numbersError } = await supabase
+              .rpc('generate_raffle_numbers', {
+                p_user_id: user.id,
+                p_sorteio_id: currentRaffle.id,
+                p_valor: valor,
+                p_bonus_numbers: bonusNumbers
+              });
+
+            if (numbersError) {
+              console.error('Error generating numbers:', numbersError);
             }
-            
-            const numerosRifa: NumeroRifa[] = numbers.map(numero => ({
-              id: `${Date.now()}-${numero}-${Math.random()}`,
-              id_usuario: user.id,
-              id_sorteio: currentRaffle.id,
-              numero_gerado: numero,
-              data_geracao: new Date().toISOString()
-            }));
-            
-            const existingNumbers = JSON.parse(localStorage.getItem('numerosRifa') || '[]');
-            localStorage.setItem('numerosRifa', JSON.stringify([...existingNumbers, ...numerosRifa]));
           }
           
           let successMessage = 'Comprovante aprovado! Números gerados automaticamente.';
